@@ -228,14 +228,14 @@ ob_start();
         $meta = $planetBlurbs[$slug] ?? ['planet' => (string) ($app['short'] ?? $slug), 'tagline_key' => ''];
         $tagKey = (string) ($meta['tagline_key'] ?? '');
     ?>
-    <article class="hs-planet-card" style="--planet-color:<?= hs_h((string) ($app['color'] ?? '#059669')) ?>">
+    <a href="<?= hs_h(hs_app_demo_url($slug)) ?>" class="hs-planet-card" style="--planet-color:<?= hs_h((string) ($app['color'] ?? '#059669')) ?>" target="_blank" rel="noopener" title="<?= hs_h(str_replace('{app}', (string) ($app['short'] ?? $slug), $t['ecosystem_app_link_title'] ?? 'Open {app}')) ?>">
       <div class="hs-planet-sphere" aria-hidden="true"></div>
       <div class="hs-planet-body">
         <span class="hs-planet-name"><?= hs_h((string) ($meta['planet'] ?? '')) ?></span>
         <h3><i class="<?= !empty($app['icon_brand']) ? 'fa-brands' : 'fa-solid' ?> fa-<?= hs_h((string) ($app['icon'] ?? 'cube')) ?>"></i> <?= hs_h((string) ($app['short'] ?? $slug)) ?></h3>
         <p><?= hs_h($tagKey !== '' ? ($t[$tagKey] ?? '') : '') ?></p>
       </div>
-    </article>
+    </a>
     <?php endforeach; ?>
   </div>
   <p class="hs-planets-note"><i class="fa-solid fa-gift"></i> <?= hs_h($t['planets_note'] ?? '') ?></p>
@@ -248,11 +248,14 @@ ob_start();
     <p class="hs-ecosystem-lead"><?= hs_h($t['ecosystem_lead'] ?? '') ?></p>
     <p class="hs-ecosystem-desc"><?= hs_h($t['ecosystem_desc'] ?? '') ?></p>
     <div class="hs-ecosystem-apps" aria-label="<?= hs_h($t['ecosystem_apps_label'] ?? 'CMS apps') ?>">
-      <?php foreach ($ecoCatalog as $slug => $app): ?>
-        <span class="hs-eco-chip" style="--eco-color:<?= hs_h((string) ($app['color'] ?? '#059669')) ?>">
+      <?php foreach ($ecoCatalog as $slug => $app):
+          $ecoLabel = (string) ($app['short'] ?? $slug);
+          $ecoUrl = hs_app_demo_url($slug);
+      ?>
+        <a href="<?= hs_h($ecoUrl) ?>" class="hs-eco-chip" style="--eco-color:<?= hs_h((string) ($app['color'] ?? '#059669')) ?>" target="_blank" rel="noopener" title="<?= hs_h(str_replace('{app}', $ecoLabel, $t['ecosystem_app_link_title'] ?? 'Open {app}')) ?>">
           <i class="<?= !empty($app['icon_brand']) ? 'fa-brands' : 'fa-solid' ?> fa-<?= hs_h((string) ($app['icon'] ?? 'cube')) ?>"></i>
-          <?= hs_h((string) ($app['short'] ?? $slug)) ?>
-        </span>
+          <?= hs_h($ecoLabel) ?>
+        </a>
       <?php endforeach; ?>
     </div>
     <ul class="hs-ecosystem-perks">

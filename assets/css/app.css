@@ -177,7 +177,12 @@ a:hover { text-decoration: underline; }
 .hs-eco-chip {
   display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .65rem; border-radius: 999px;
   font-size: .75rem; font-weight: 600; background: #fff; border: 1px solid var(--hs-border);
-  color: var(--eco-color, var(--hs-accent));
+  color: var(--eco-color, var(--hs-accent)); text-decoration: none;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.hs-eco-chip:hover {
+  transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,23,42,.08);
+  border-color: color-mix(in srgb, var(--eco-color, var(--hs-accent)) 35%, var(--hs-border));
 }
 .hs-eco-chip i { font-size: .72rem; }
 .hs-ecosystem-perks {
@@ -243,6 +248,7 @@ a:hover { text-decoration: underline; }
   position: relative; overflow: hidden; border-radius: calc(var(--hs-radius) + 4px);
   border: 1px solid var(--hs-border); background: #fff; padding: 1rem .95rem 1rem 1rem;
   box-shadow: var(--hs-shadow); transition: transform .2s ease, box-shadow .2s ease;
+  display: block; text-decoration: none; color: inherit;
 }
 .hs-planet-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(15,23,42,.08); }
 .hs-planet-sphere {

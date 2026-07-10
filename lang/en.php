@@ -62,6 +62,7 @@ return [
     'ecosystem_perk_2' => 'Separate folder per site',
     'ecosystem_perk_3' => 'BILOHASH updates & support',
     'ecosystem_cta' => 'Choose a hosting plan',
+    'ecosystem_app_link_title' => 'Open {app} demo',
     'stats_cms' => '15+',
     'stats_cms_label' => 'CMS apps in ecosystem',
     'stats_panel' => '40+',

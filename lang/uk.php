@@ -62,6 +62,7 @@ return [
     'ecosystem_perk_2' => 'Окрема папка для кожного сайту',
     'ecosystem_perk_3' => 'Оновлення та підтримка BILOHASH',
     'ecosystem_cta' => 'Обрати тариф хостингу',
+    'ecosystem_app_link_title' => 'Відкрити демо {app}',
     'stats_cms' => '15+',
     'stats_cms_label' => 'CMS у екосистемі',
     'stats_panel' => '40+',

@@ -62,6 +62,7 @@ return [
     'ecosystem_perk_2' => 'Egen mappe per nettsted',
     'ecosystem_perk_3' => 'BILOHASH-oppdateringer og support',
     'ecosystem_cta' => 'Velg hostingplan',
+    'ecosystem_app_link_title' => 'Åpne {app}-demo',
     'stats_cms' => '15+',
     'stats_cms_label' => 'CMS i økosystemet',
     'stats_panel' => '40+',
