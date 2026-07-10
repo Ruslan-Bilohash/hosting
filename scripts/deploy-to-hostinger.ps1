@@ -19,7 +19,23 @@ $zipPath = Join-Path $env:TEMP ('hosting-deploy-' + [guid]::NewGuid().ToString('
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
 Push-Location $LocalRoot
 try {
-    & tar -a -c -f $zipPath --exclude='.git' --exclude='data/logs' --exclude='data/users.json' --exclude='data/sites.json' --exclude='data/user-settings.json' --exclude='data/domain-orders.json' --exclude='data/plans-catalog.json' --exclude='data/hosting-orders.json' --exclude='data/invoices.json' --exclude='data/invoice-counter.json' --exclude='data/client-counter.json' --exclude='data/db.config.php' --exclude='data/admin.config.php' --exclude='data/mysql-provision.config.php' --exclude='data/ssh.config.local.php' --exclude='data/pma.config.php' --exclude='data/installed.lock' --exclude='public_html/demo' --exclude='public_html/admin' --exclude='pma/vendor' --exclude='pma/js' --exclude='pma/templates' *
+    & tar -a -c -f $zipPath `
+        --exclude='.git' `
+        --exclude='screenshot' `
+        --exclude='scripts/deploy.config.local.ps1' `
+        --exclude='scripts/ssh-*' `
+        --exclude='scripts/deploy-to-ilove.ps1' `
+        --exclude='scripts/setup-shared-mysql.php' `
+        --exclude='scripts/write-provision-from-dbconfig.php' `
+        --exclude='scripts/test-provision.php' `
+        --exclude='data/logs' `
+        --exclude='data/users.json' --exclude='data/sites.json' --exclude='data/user-settings.json' `
+        --exclude='data/domain-orders.json' --exclude='data/plans-catalog.json' --exclude='data/hosting-orders.json' `
+        --exclude='data/invoices.json' --exclude='data/invoice-counter.json' --exclude='data/client-counter.json' `
+        --exclude='data/db.config.php' --exclude='data/admin.config.php' --exclude='data/mysql-provision.config.php' `
+        --exclude='data/ssh.config.local.php' --exclude='data/pma.config.php' --exclude='data/installed.lock' `
+        --exclude='public_html/demo' --exclude='public_html/admin' `
+        --exclude='pma/vendor' --exclude='pma/js' --exclude='pma/templates' *
 } finally {
     Pop-Location
 }
