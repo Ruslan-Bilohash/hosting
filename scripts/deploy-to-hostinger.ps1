@@ -10,7 +10,7 @@ $zipPath = Join-Path $env:TEMP ('hosting-deploy-' + [guid]::NewGuid().ToString('
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
 Push-Location $LocalRoot
 try {
-    & tar -a -c -f $zipPath --exclude='data/logs' --exclude='data/users.json' --exclude='data/sites.json' --exclude='data/user-settings.json' --exclude='data/domain-orders.json' --exclude='data/plans-catalog.json' --exclude='data/hosting-orders.json' --exclude='data/invoices.json' --exclude='data/invoice-counter.json' --exclude='data/client-counter.json' --exclude='data/db.config.php' --exclude='data/admin.config.php' --exclude='data/mysql-provision.config.php' --exclude='data/ssh.config.local.php' --exclude='data/pma.config.php' --exclude='data/installed.lock' --exclude='pma/vendor' --exclude='pma/js' --exclude='pma/templates' *
+    & tar -a -c -f $zipPath --exclude='.git' --exclude='data/logs' --exclude='data/users.json' --exclude='data/sites.json' --exclude='data/user-settings.json' --exclude='data/domain-orders.json' --exclude='data/plans-catalog.json' --exclude='data/hosting-orders.json' --exclude='data/invoices.json' --exclude='data/invoice-counter.json' --exclude='data/client-counter.json' --exclude='data/db.config.php' --exclude='data/admin.config.php' --exclude='data/mysql-provision.config.php' --exclude='data/ssh.config.local.php' --exclude='data/pma.config.php' --exclude='data/installed.lock' --exclude='pma/vendor' --exclude='pma/js' --exclude='pma/templates' *
 } finally {
     Pop-Location
 }
