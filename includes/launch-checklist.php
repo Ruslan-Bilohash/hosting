@@ -131,7 +131,10 @@ function hs_render_launch_checklist(array $user, array $settings, array $sites, 
         $optional = !empty($step['optional']);
         $titleText = $t[$step['title_key']] ?? $step['title_key'];
         $tipText = $t[$step['tip_key']] ?? '';
-        $url = hs_url($step['url']);
+        $stepUrl = (string) ($step['url'] ?? '');
+        $url = !empty($step['external']) || preg_match('#^https?://#i', $stepUrl)
+            ? $stepUrl
+            : hs_url($stepUrl);
         $ext = !empty($step['external']) ? ' target="_blank" rel="noopener"' : '';
         $optBadge = $optional
             ? '<span class="hp-launch-opt">' . hs_h($t['launch_optional'] ?? 'Optional') . '</span>'

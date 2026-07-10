@@ -2,6 +2,11 @@
 
 All notable changes to BILOHASH Hosting CMS.
 
+## [2.5.5] — 2026-07-10
+
+### Fixed
+- Launch checklist “Review” link after publishing landing — no longer doubles absolute `published_url` through `hs_url()`
+
 ## [2.5.1] — 2026-07-10
 
 ### Security
