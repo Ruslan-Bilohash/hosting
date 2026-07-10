@@ -45,6 +45,15 @@ hosting/
 └── prompt/                # Документація для AI-агентів
 ```
 
+## Налаштування
+
+1. `config.local.example.php` → `config.local.php` (SSH, IP сервера — **не комітити**)
+2. `scripts/deploy.config.example.ps1` → `scripts/deploy.config.local.ps1`
+3. `data/db.config.example.php` → `data/db.config.php`
+4. `data/admin.config.example.php` → `data/admin.config.php`
+
+**Не завантажуйте в Git:** `config.local.php`, `deploy.config.local.ps1`, `data/*.json`, `data/*.config.php`, папки клієнтів у `public_html/`.
+
 ## Дорожня карта
 
 - [x] UI як hPanel, інсталятор екосистеми, інвойси

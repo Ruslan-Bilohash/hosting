@@ -1,6 +1,6 @@
 # Hosting CMS — version & status
 
-**Current:** v2.5.0 (2026-07-10)  
+**Current:** v2.5.1 (2026-07-10)  
 **URL:** https://bilohash.com/hosting/  
 **GitHub:** https://github.com/Ruslan-Bilohash/hosting
 

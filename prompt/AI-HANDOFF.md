@@ -1,7 +1,7 @@
 # AI Handoff — Hosting CMS
 
 **Read first:** [`HOSTING-CMS-MASTER.md`](HOSTING-CMS-MASTER.md)  
-**Version:** `includes/version.php` (v2.5.0)  
+**Version:** `includes/version.php` (v2.5.1)  
 **GitHub:** https://github.com/Ruslan-Bilohash/hosting  
 **Production:** https://bilohash.com/hosting/
 
@@ -39,7 +39,7 @@ hosting/
 ## Rules
 
 - Prefix `hs_` / `HS_`, CSRF on POST
-- Never commit production `data/*.json` or secrets
+- Never commit `config.local.php`, `scripts/deploy.config.local.ps1`, production `data/*.json` or secrets
 - Deploy after production fixes: `scripts/deploy-to-hostinger.ps1`
 - i18n: update `lang/en.php` + `uk.php` + `no.php` (+ `panel-*`)
 

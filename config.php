@@ -13,10 +13,27 @@ define('HS_DEMO_MODE', true);
 define('HS_PUBLIC_HTML', 'public_html');
 define('HS_DATA_DIR', __DIR__ . '/data');
 
-/** Hostinger SSH */
-define('HS_SSH_HOST', '45.84.204.61');
-define('HS_SSH_PORT', 65002);
-define('HS_SSH_USER', 'u762384583');
+/** SSH defaults (override in config.local.php on production) */
+if (!defined('HS_SSH_HOST')) {
+    define('HS_SSH_HOST', 'localhost');
+}
+if (!defined('HS_SSH_PORT')) {
+    define('HS_SSH_PORT', 22);
+}
+if (!defined('HS_SSH_USER')) {
+    define('HS_SSH_USER', '');
+}
+if (!defined('HS_SERVER_IP')) {
+    define('HS_SERVER_IP', '127.0.0.1');
+}
+if (!defined('HS_FTP_USER_PREFIX')) {
+    define('HS_FTP_USER_PREFIX', '');
+}
+
+$hs_local_config = __DIR__ . '/config.local.php';
+if (is_file($hs_local_config)) {
+    require $hs_local_config;
+}
 
 $hs_ssh_config = __DIR__ . '/data/ssh.config.local.php';
 if (is_file($hs_ssh_config)) {

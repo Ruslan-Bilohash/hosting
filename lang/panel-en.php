@@ -135,7 +135,7 @@ return [
     'domains_add' => 'Subdomain name',
     'domains_dns_title' => 'DNS zone',
     'domains_dns_hint' => 'System records are preconfigured. Add your own A, CNAME, TXT, MX records below.',
-    'domains_dns_a' => 'A record → 45.84.204.61 (or your server IP)',
+    'domains_dns_a' => 'A record → your server IP (see Plan details)',
     'domains_dns_www' => 'CNAME www → your domain',
     'dom_check_title' => 'Domain availability',
     'dom_check_sld_label' => 'Domain name (without zone)',

@@ -98,11 +98,11 @@ ob_start();
       <div class="hs-field"><label>User</label><input name="prov_user" value="<?= hs_h((string) ($cfg['user'] ?? '')) ?>" required autocomplete="off"></div>
       <div class="hs-field"><label>Password</label><input type="password" name="prov_pass" placeholder="<?= ($cfg['pass'] ?? '') !== '' ? '••••••••' : '' ?>" autocomplete="new-password"></div>
       <div class="hs-field"><label>DB prefix</label><input name="prov_db_prefix" value="<?= hs_h((string) ($cfg['db_prefix'] ?? 'hs_')) ?>"></div>
-      <div class="hs-field"><label>Name prefix (Hostinger)</label><input name="prov_name_prefix" value="<?= hs_h((string) ($cfg['name_prefix'] ?? '')) ?>" placeholder="u762384583_"></div>
+      <div class="hs-field"><label>Name prefix (Hostinger)</label><input name="prov_name_prefix" value="<?= hs_h((string) ($cfg['name_prefix'] ?? '')) ?>" placeholder="account_prefix_"></div>
       <div class="hs-field"><label>Client host</label><input name="prov_client_host" value="<?= hs_h((string) ($cfg['client_host'] ?? '')) ?>" placeholder="localhost"></div>
       <div class="hs-field"><label>Grant host</label><input name="prov_grant_host" value="<?= hs_h((string) ($cfg['grant_host'] ?? 'localhost')) ?>" placeholder="localhost або %"></div>
       <div class="hs-field"><label>Mode</label><select name="prov_mode"><option value="dedicated"<?= ($cfg['mode'] ?? '') !== 'shared' ? ' selected' : '' ?>>dedicated (CREATE DATABASE)</option><option value="shared"<?= ($cfg['mode'] ?? '') === 'shared' ? ' selected' : '' ?>>shared (Hostinger CMS DB)</option></select></div>
-      <div class="hs-field"><label>Shared database</label><input name="prov_shared_database" value="<?= hs_h((string) ($cfg['shared_database'] ?? '')) ?>" placeholder="u762384583_hosting_cms"></div>
+      <div class="hs-field"><label>Shared database</label><input name="prov_shared_database" value="<?= hs_h((string) ($cfg['shared_database'] ?? '')) ?>" placeholder="hosting_cms"></div>
       <div class="hs-field"><label>Shared user</label><input name="prov_shared_user" value="<?= hs_h((string) ($cfg['shared_user'] ?? '')) ?>"></div>
       <div class="hs-field"><label>Shared pass</label><input type="password" name="prov_shared_pass" placeholder="<?= ($cfg['shared_pass'] ?? '') !== '' ? '••••••••' : '' ?>"></div>
     </div>

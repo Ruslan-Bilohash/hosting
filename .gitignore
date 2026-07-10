@@ -8,6 +8,21 @@
 /data/pma.config.php
 /data/installed.lock
 
+# Local overrides (SSH, server IP, deploy paths)
+/config.local.php
+/scripts/deploy.config.local.ps1
+
+# Client site files — created at runtime by installer/seed
+/public_html/*
+!/public_html/.htaccess
+
+# Internal ops scripts (read production configs over SSH)
+/scripts/ssh-*.ps1
+/scripts/deploy-to-ilove.ps1
+/scripts/setup-shared-mysql.php
+/scripts/write-provision-from-dbconfig.php
+/scripts/test-provision.php
+
 # Keep examples & static seed data
 !/data/*.example.php
 !/data/countries.json

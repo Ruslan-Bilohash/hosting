@@ -32,6 +32,14 @@ php -S localhost:8080
 - **Språk** — ukrainsk, engelsk, norsk
 - **Deploy** — `scripts/deploy-to-hostinger.ps1`
 
+## Konfigurasjon
+
+1. `config.local.example.php` → `config.local.php` (SSH, server-IP — **aldri commit**)
+2. `scripts/deploy.config.example.ps1` → `scripts/deploy.config.local.ps1`
+3. `data/db.config.example.php` → `data/db.config.php`
+
+**Ikke last opp til Git:** `config.local.php`, `deploy.config.local.ps1`, `data/*.json`, `data/*.config.php`, kundemapper i `public_html/`.
+
 ## Veikart
 
 - [x] hPanel-UI, økosystem-installer, fakturaer

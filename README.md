@@ -50,9 +50,18 @@ hosting/
 
 ## Configuration
 
-1. Copy `data/db.config.example.php` → `data/db.config.php` when using shared MySQL installer
-2. Copy `data/admin.config.example.php` → `data/admin.config.php` for custom super-admin password
-3. Run web installer: `/install.php` (optional MySQL schema)
+1. Copy `config.local.example.php` → `config.local.php` (SSH host, server IP — **never commit**)
+2. Copy `scripts/deploy.config.example.ps1` → `scripts/deploy.config.local.ps1` for production deploy
+3. Copy `data/db.config.example.php` → `data/db.config.php` when using shared MySQL installer
+4. Copy `data/admin.config.example.php` → `data/admin.config.php` for custom super-admin password
+5. Run web installer: `/install.php` (optional MySQL schema)
+
+### Never commit to Git
+
+- `config.local.php`, `scripts/deploy.config.local.ps1`
+- `data/*.json` (users, sites, settings, orders, invoices, logs)
+- `data/db.config.php`, `data/admin.config.php`, `data/mysql-provision.config.php`, `data/ssh.config.local.php`, `data/pma.config.php`
+- `public_html/*/` (client sites — created by installer at runtime)
 
 ## Roadmap
 

@@ -5,15 +5,15 @@ declare(strict_types=1);
 function hs_demo_panel_constants(): array
 {
     return [
-        'ip' => '45.84.204.61',
-        'server_name' => 'server1482',
-        'location' => 'Europe (Lithuania)',
-        'backup_location' => 'France',
-        'ns1' => 'ns1.dns-parking.com',
-        'ns2' => 'ns2.dns-parking.com',
-        'ftp_host' => 'bilohash.com',
+        'ip' => HS_SERVER_IP,
+        'server_name' => 'demo-server',
+        'location' => 'Europe',
+        'backup_location' => 'EU',
+        'ns1' => 'ns1.example.com',
+        'ns2' => 'ns2.example.com',
+        'ftp_host' => hs_default_primary_domain(),
         'ftp_path' => 'public_html',
-        'ftp_user_prefix' => 'u762384583',
+        'ftp_user_prefix' => HS_FTP_USER_PREFIX,
     ];
 }
 
@@ -24,15 +24,15 @@ function hs_server_constants(?array $user = null): array
         return hs_demo_panel_constants();
     }
     return [
-        'ip' => '45.84.204.61',
-        'server_name' => 'server1482',
-        'location' => 'Europe (Lithuania)',
-        'backup_location' => 'France',
-        'ns1' => 'ns1.dns-parking.com',
-        'ns2' => 'ns2.dns-parking.com',
+        'ip' => HS_SERVER_IP,
+        'server_name' => 'server1',
+        'location' => 'Europe',
+        'backup_location' => 'EU',
+        'ns1' => 'ns1.example.com',
+        'ns2' => 'ns2.example.com',
         'ftp_host' => hs_default_primary_domain(),
         'ftp_path' => 'public_html',
-        'ftp_user_prefix' => 'u762384583',
+        'ftp_user_prefix' => HS_FTP_USER_PREFIX,
     ];
 }
 

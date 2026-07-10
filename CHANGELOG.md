@@ -2,6 +2,14 @@
 
 All notable changes to BILOHASH Hosting CMS.
 
+## [2.5.1] — 2026-07-10
+
+### Security
+- Production SSH/server settings moved to `config.local.php` (gitignored)
+- Deploy paths/credentials in `scripts/deploy.config.local.ps1` (gitignored)
+- Removed `public_html/demo/` and internal `ssh-*.ps1` ops scripts from repository
+- Sanitized example configs and panel DNS hints (no real server IP in repo)
+
 ## [2.5.0] — 2026-07-10
 
 ### Added
@@ -12,7 +20,7 @@ All notable changes to BILOHASH Hosting CMS.
 - `data/admin.config.example.php`
 
 ### Changed
-- Platform admin login default: `admin` / `admin` (was `administrator` / `bilohost2026`)
+- Platform admin login default: `admin` / `admin` (legacy `administrator` migrates on seed)
 - Seed migrates legacy `administrator` account to `admin`
 
 ## [2.4.9] — 2026-07-10

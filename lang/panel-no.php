@@ -135,7 +135,7 @@ return [
     'domains_add' => 'Underdomenenavn',
     'domains_dns_title' => 'DNS-sone',
     'domains_dns_hint' => 'Systemposter er forhåndsinnstilt. Legg til egne A-, CNAME-, TXT- og MX-poster nedenfor.',
-    'domains_dns_a' => 'A-post → 45.84.204.61 (eller din server-IP)',
+    'domains_dns_a' => 'A-post → server-IP (se «Plandetaljer»)',
     'domains_dns_www' => 'CNAME www → ditt domene',
     'dom_check_title' => 'Domenetilgjengelighet',
     'dom_check_sld_label' => 'Domenenavn (uten sone)',

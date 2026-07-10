@@ -1,8 +1,16 @@
 # Install phpMyAdmin 5.2.2 into hosting/pma/ on production (preserves config.inc.php from deploy).
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot '..\..\shop\scripts\deploy.config.local.ps1')
 
-$RemoteRoot = '/home/u762384583/domains/bilohash.com/public_html/hosting'
+$cfgLocal = Join-Path $PSScriptRoot 'deploy.config.local.ps1'
+$cfgShop = Join-Path $PSScriptRoot '..\..\shop\scripts\deploy.config.local.ps1'
+if (Test-Path $cfgLocal) {
+    . $cfgLocal
+} elseif (Test-Path $cfgShop) {
+    . $cfgShop
+} else {
+    throw 'Missing deploy.config.local.ps1'
+}
+if (-not $RemoteRoot) { throw 'Set $RemoteRoot in deploy.config.local.ps1' }
 $PmaUrl = 'https://files.phpmyadmin.net/phpMyAdmin/5.2.2/phpMyAdmin-5.2.2-all-languages.tar.gz'
 
 Import-Module Posh-SSH -ErrorAction Stop

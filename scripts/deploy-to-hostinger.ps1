@@ -1,16 +1,25 @@
-# Deploy Hosting CMS — production: https://bilohash.com/hosting/
-# Same URL/path when you move to VPS (point DNS + upload this tree to /hosting/).
+# Deploy Hosting CMS — configure paths in scripts/deploy.config.local.ps1 (see .example).
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot '..\..\shop\scripts\deploy.config.local.ps1')
 
-$LocalRoot = 'C:\bilohash\hosting'
-$RemoteRoot = '/home/u762384583/domains/bilohash.com/public_html/hosting'
+$cfgLocal = Join-Path $PSScriptRoot 'deploy.config.local.ps1'
+$cfgShop = Join-Path $PSScriptRoot '..\..\shop\scripts\deploy.config.local.ps1'
+if (Test-Path $cfgLocal) {
+    . $cfgLocal
+} elseif (Test-Path $cfgShop) {
+    . $cfgShop
+} else {
+    throw 'Missing deploy.config.local.ps1 — copy scripts/deploy.config.example.ps1'
+}
+
+if (-not $LocalRoot) { $LocalRoot = 'C:\bilohash\hosting' }
+if (-not $RemoteRoot) { throw 'Set $RemoteRoot in deploy.config.local.ps1' }
+
 $zipPath = Join-Path $env:TEMP ('hosting-deploy-' + [guid]::NewGuid().ToString('n') + '.zip')
 
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
 Push-Location $LocalRoot
 try {
-    & tar -a -c -f $zipPath --exclude='.git' --exclude='data/logs' --exclude='data/users.json' --exclude='data/sites.json' --exclude='data/user-settings.json' --exclude='data/domain-orders.json' --exclude='data/plans-catalog.json' --exclude='data/hosting-orders.json' --exclude='data/invoices.json' --exclude='data/invoice-counter.json' --exclude='data/client-counter.json' --exclude='data/db.config.php' --exclude='data/admin.config.php' --exclude='data/mysql-provision.config.php' --exclude='data/ssh.config.local.php' --exclude='data/pma.config.php' --exclude='data/installed.lock' --exclude='pma/vendor' --exclude='pma/js' --exclude='pma/templates' *
+    & tar -a -c -f $zipPath --exclude='.git' --exclude='data/logs' --exclude='data/users.json' --exclude='data/sites.json' --exclude='data/user-settings.json' --exclude='data/domain-orders.json' --exclude='data/plans-catalog.json' --exclude='data/hosting-orders.json' --exclude='data/invoices.json' --exclude='data/invoice-counter.json' --exclude='data/client-counter.json' --exclude='data/db.config.php' --exclude='data/admin.config.php' --exclude='data/mysql-provision.config.php' --exclude='data/ssh.config.local.php' --exclude='data/pma.config.php' --exclude='data/installed.lock' --exclude='public_html/demo' --exclude='public_html/admin' --exclude='pma/vendor' --exclude='pma/js' --exclude='pma/templates' *
 } finally {
     Pop-Location
 }
@@ -31,5 +40,5 @@ try {
     Remove-SSHSession -SessionId $s.SessionId | Out-Null
     Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
 }
-Write-Host 'Deploy OK: https://bilohash.com/hosting/'
+Write-Host "Deploy OK: $RemoteRoot"
 & (Join-Path $PSScriptRoot 'install-phpmyadmin.ps1')

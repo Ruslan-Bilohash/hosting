@@ -78,9 +78,10 @@ Install via `includes/installer.php`.
 
 ## Production server
 
-- SSH: `ssh -p 65002 u762384583@45.84.204.61`  
-- Remote: `/home/u762384583/domains/bilohash.com/public_html/hosting/`  
-- Ecosystem siblings: `/public_html/shop/`, `/booking/`, etc.
+- **Never commit** `config.local.php`, `data/*.json`, `data/*.config.php`, or `scripts/deploy.config.local.ps1`
+- Copy `config.local.example.php` → `config.local.php` (SSH host, server IP, FTP prefix)
+- Copy `scripts/deploy.config.example.ps1` → `scripts/deploy.config.local.ps1` (remote path + SSH)
+- Ecosystem siblings live as separate folders under `public_html/` on the same host
 
 ## Definition of done
 
