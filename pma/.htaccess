@@ -1,0 +1,5 @@
+# phpMyAdmin — access only after panel signon (no directory listing)
+Options -Indexes
+<IfModule mod_headers.c>
+  Header set X-Frame-Options "SAMEORIGIN"
+</IfModule>

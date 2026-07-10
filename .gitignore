@@ -1,0 +1,29 @@
+# Secrets & production data (never commit)
+/data/*.json
+/data/logs/
+/data/db.config.php
+/data/admin.config.php
+/data/mysql-provision.config.php
+/data/ssh.config.local.php
+/data/pma.config.php
+/data/installed.lock
+
+# Keep examples & static seed data
+!/data/*.example.php
+!/data/countries.json
+
+# phpMyAdmin vendor (install via scripts/install-phpmyadmin.ps1)
+/pma/vendor/
+/pma/js/
+/pma/templates/
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# Deploy temp
+_hosting-deploy.zip

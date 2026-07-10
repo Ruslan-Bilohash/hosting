@@ -1,0 +1,12 @@
+Options -Indexes
+DirectoryIndex index.php index.html
+<FilesMatch "^(config|init)\.php$">
+  Require all denied
+</FilesMatch>
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+</IfModule>
+<FilesMatch "\.(json|log)$">
+  Require all denied
+</FilesMatch>

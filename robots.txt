@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /panel/
+Disallow: /admin/
+Disallow: /data/
+Disallow: /public_html/
