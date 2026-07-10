@@ -1,23 +1,27 @@
 <?php
 /**
- * Hosting CMS — import JSON runtime data into MySQL (schema 2.0).
- * Run once after upgrade. Backs up JSON to data/json-backup/.
+ * BILOHASH Hosting CMS — JSON → MySQL migration (schema 2.0).
  */
 declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/includes/version.php';
+require_once __DIR__ . '/includes/install-i18n.php';
 require_once __DIR__ . '/includes/database.php';
 require_once __DIR__ . '/includes/storage.php';
 require_once __DIR__ . '/includes/db-migrate.php';
 require_once __DIR__ . '/includes/admin-auth.php';
 
+$lang = hs_install_detect_lang();
+$t = hs_install_strings($lang);
+
 if (hs_db_pdo() instanceof PDO) {
     hs_db_ensure_schema();
 }
 
-function hs_migrate_h(string $s): string
+function hs_migrate_page_h(string $s): string
 {
-    return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars($s, ENT_QUOTES | ENT_UTF-8, 'UTF-8');
 }
 
 $canRun = hs_db_pdo() instanceof PDO;
@@ -30,9 +34,9 @@ if ($canRun && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $adminPass = (string) ($_POST['admin_pass'] ?? '');
     $confirm = !empty($_POST['confirm_migrate']);
     if (!$confirm) {
-        $error = 'Підтвердіть імпорт (checkbox).';
+        $error = hs_install_t($t, 'migrate_error_confirm');
     } elseif (!hs_admin_verify_credentials($adminUser, $adminPass)) {
-        $error = 'Невірний логін або пароль платформного адміна (data/admin.config.php).';
+        $error = hs_install_t($t, 'migrate_error_auth');
     } else {
         $result = hs_mysql_migrate_from_json(true);
         if (!empty($result['ok'])) {
@@ -59,108 +63,109 @@ $jsonFiles = [
 global $base_path;
 $prefix = rtrim((string) ($base_path ?? ''), '/');
 $homeUrl = ($prefix !== '' ? $prefix : '') . '/';
+$installUrl = $homeUrl . 'install.php?lang=' . rawurlencode($lang);
+$panelUrl = $homeUrl . 'panel/';
+$cssUrl = ($prefix !== '' ? $prefix : '') . '/assets/css/install.css?v=' . rawurlencode(hs_version());
 ?><!DOCTYPE html>
-<html lang="uk">
+<html lang="<?= hs_migrate_page_h($t['html_lang'] ?? 'en') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex">
-    <title>Hosting CMS — Міграція JSON → MySQL</title>
-    <style>
-        :root { --bg:#f0f9ff; --card:#fff; --text:#0f172a; --muted:#64748b; --p:#0284c7; --ok:#16a34a; --err:#dc2626; --border:#bae6fd; }
-        * { box-sizing: border-box; }
-        body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
-        .wrap { max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
-        h1 { font-size: 1.35rem; margin: 0 0 .5rem; }
-        .muted { color: var(--muted); font-size: .92rem; }
-        .err { color: var(--err); background: #fef2f2; padding: .75rem; border-radius: 8px; }
-        .ok { color: var(--ok); }
-        ul { margin: .5rem 0; padding-left: 1.25rem; }
-        label { display: block; margin: .75rem 0 .25rem; font-weight: 500; }
-        input[type=text], input[type=password] { width: 100%; padding: .5rem .75rem; border: 1px solid var(--border); border-radius: 8px; }
-        button { margin-top: 1rem; background: var(--p); color: #fff; border: 0; padding: .65rem 1.25rem; border-radius: 8px; cursor: pointer; font-weight: 600; }
-        table { width: 100%; border-collapse: collapse; font-size: .88rem; }
-        td, th { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid var(--border); }
-        code { font-size: .82rem; }
-    </style>
+    <title><?= hs_migrate_page_h($t['migrate_page_title'] ?? 'Migration') ?></title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="<?= hs_migrate_page_h($cssUrl) ?>">
 </head>
-<body>
-<div class="wrap">
-    <div class="card">
-        <h1>Міграція JSON → MySQL</h1>
-        <p class="muted">Схема <?= hs_migrate_h(HS_MYSQL_SCHEMA_V2) ?> — усі runtime-дані CMS переносяться в MySQL. JSON копії зберігаються в <code>data/json-backup/</code>.</p>
-        <?php if (!$canRun): ?>
-            <p class="err">Спочатку налаштуйте MySQL через <a href="<?= hs_migrate_h($homeUrl . 'install.php') ?>">install.php</a> (потрібен <code>data/db.config.php</code>).</p>
-        <?php else: ?>
-            <p class="muted">Schema: <strong><?= hs_migrate_h((string) hs_db_meta_get_scalar('schema_version', '—')) ?></strong>
-                <?php if ($migratedAt !== ''): ?> · Імпорт: <strong><?= hs_migrate_h($migratedAt) ?></strong><?php endif; ?></p>
-        <?php endif; ?>
-    </div>
-
-    <div class="card">
-        <h2 style="font-size:1.1rem;margin:0 0 .75rem">Файли JSON на сервері</h2>
-        <table>
-            <tr><th>Файл</th><th>Статус</th></tr>
-            <?php foreach ($jsonFiles as $name => $path): ?>
-            <tr>
-                <td><code><?= hs_migrate_h($name) ?></code></td>
-                <td><?= is_file($path) ? '<span class="ok">є (' . (int) filesize($path) . ' B)</span>' : '<span class="muted">немає</span>' ?></td>
-            </tr>
+<body class="hi-body">
+<div class="hi-wrap">
+    <div class="hi-topbar">
+        <a href="<?= hs_migrate_page_h($installUrl) ?>" style="color:var(--hi-accent);text-decoration:none;font-size:13px;font-weight:600"><?= hs_migrate_page_h($t['migrate_back_install'] ?? '') ?></a>
+        <nav class="hi-langs">
+            <?php foreach (hs_install_langs() as $code => $label): ?>
+            <a href="<?= hs_migrate_page_h(hs_install_lang_url($code, 'migrate-to-mysql.php')) ?>" class="<?= $code === $lang ? 'is-active' : '' ?>"><?= hs_migrate_page_h($label) ?></a>
             <?php endforeach; ?>
-        </table>
+        </nav>
     </div>
 
-    <div class="card">
-        <h2 style="font-size:1.1rem;margin:0 0 .75rem">Що лишається у файлах (безпека)</h2>
-        <ul class="muted">
-            <li><code>data/db.config.php</code> — доступ CMS до MySQL</li>
-            <li><code>data/admin.config.php</code> — супер-адмін панелі</li>
-            <li><code>data/mysql-provision.config.php</code> — root для створення БД клієнтів</li>
-            <li><code>data/client-db/*.php</code> — паролі БД для ecosystem-додатків</li>
-            <li><code>data/ssh.config.local.php</code>, <code>config.local.php</code> — SSH / локальні секрети</li>
-            <li><code>public_html/</code> — файли сайтів клієнтів (не в MySQL)</li>
+    <header class="hi-hero">
+        <div class="hi-logo"><i class="fa-solid fa-right-left"></i></div>
+        <h1><?= hs_migrate_page_h($t['migrate_page_title'] ?? '') ?></h1>
+        <p class="hi-tagline"><?= hs_migrate_page_h($t['migrate_page_lead'] ?? '') ?></p>
+    </header>
+
+    <section class="hi-card">
+        <?php if (!$canRun): ?>
+        <div class="hi-alert hi-alert-err"><?= hs_migrate_page_h($t['migrate_no_mysql'] ?? '') ?> — <a href="<?= hs_migrate_page_h($installUrl) ?>" style="color:inherit">install.php</a></div>
+        <?php else: ?>
+        <p class="hi-hint">Schema <strong><?= hs_migrate_page_h((string) hs_db_meta_get_scalar('schema_version', HS_MYSQL_SCHEMA_V2)) ?></strong>
+            <?php if ($migratedAt !== ''): ?> · <?= hs_migrate_page_h($migratedAt) ?><?php endif; ?></p>
+        <?php endif; ?>
+    </section>
+
+    <section class="hi-card">
+        <h2><i class="fa-solid fa-file-code"></i> <?= hs_migrate_page_h($t['migrate_files_title'] ?? '') ?></h2>
+        <ul class="hi-sec-list">
+            <?php foreach ($jsonFiles as $name => $path): ?>
+            <li><code><?= hs_migrate_page_h($name) ?></code> —
+                <?php if (is_file($path)): ?>
+                <span style="color:var(--hi-ok)"><?= hs_migrate_page_h($t['migrate_file_present'] ?? '') ?> (<?= (int) filesize($path) ?> B)</span>
+                <?php else: ?>
+                <span><?= hs_migrate_page_h($t['migrate_file_missing'] ?? '') ?></span>
+                <?php endif; ?>
+            </li>
+            <?php endforeach; ?>
         </ul>
-    </div>
+    </section>
+
+    <section class="hi-card">
+        <h2><i class="fa-solid fa-shield-halved"></i> <?= hs_migrate_page_h($t['security_title'] ?? '') ?></h2>
+        <ul class="hi-sec-list">
+            <li><code>data/db.config.php</code></li>
+            <li><code>data/admin.config.php</code></li>
+            <li><code>data/mysql-provision.config.php</code></li>
+            <li><code>public_html/</code></li>
+        </ul>
+    </section>
 
     <?php if ($error !== ''): ?>
-    <div class="card err"><?= hs_migrate_h($error) ?></div>
+    <div class="hi-alert hi-alert-err"><?= hs_migrate_page_h($error) ?></div>
     <?php endif; ?>
 
     <?php if (is_array($result)): ?>
-    <div class="card">
-        <h2 style="font-size:1.1rem;margin:0 0 .75rem">Результат</h2>
+    <section class="hi-card">
+        <div class="hi-alert hi-alert-ok"><?= hs_migrate_page_h($t['migrate_result_ok'] ?? '') ?></div>
         <?php if (($result['migrated'] ?? []) !== []): ?>
-            <p class="ok">Імпортовано:</p>
-            <ul><?php foreach ($result['migrated'] as $line): ?><li><?= hs_migrate_h($line) ?></li><?php endforeach; ?></ul>
+        <p><strong><?= hs_migrate_page_h($t['migrate_result_imported'] ?? '') ?>:</strong></p>
+        <ul class="hi-sec-list"><?php foreach ($result['migrated'] as $line): ?><li><?= hs_migrate_page_h($line) ?></li><?php endforeach; ?></ul>
         <?php endif; ?>
         <?php if (($result['skipped'] ?? []) !== []): ?>
-            <p class="muted">Пропущено:</p>
-            <ul><?php foreach ($result['skipped'] as $line): ?><li><?= hs_migrate_h($line) ?></li><?php endforeach; ?></ul>
+        <p class="hi-hint"><strong><?= hs_migrate_page_h($t['migrate_result_skipped'] ?? '') ?>:</strong></p>
+        <ul class="hi-sec-list"><?php foreach ($result['skipped'] as $line): ?><li><?= hs_migrate_page_h($line) ?></li><?php endforeach; ?></ul>
         <?php endif; ?>
-        <?php if (($result['errors'] ?? []) !== []): ?>
-            <p class="err">Помилки:</p>
-            <ul><?php foreach ($result['errors'] as $line): ?><li><?= hs_migrate_h($line) ?></li><?php endforeach; ?></ul>
-        <?php endif; ?>
-        <p><a href="<?= hs_migrate_h($homeUrl . 'panel/') ?>">→ Клієнтська панель</a></p>
-    </div>
+        <div class="hi-links">
+            <a class="hi-link hi-link-primary" href="<?= hs_migrate_page_h($panelUrl) ?>"><i class="fa-solid fa-gauge-high"></i> <?= hs_migrate_page_h($t['link_panel'] ?? 'Panel') ?></a>
+        </div>
+    </section>
     <?php endif; ?>
 
     <?php if ($canRun): ?>
-    <div class="card">
-        <form method="post">
-            <p class="muted">Потрібні облікові дані з <code>data/admin.config.php</code>. Імпорт безпечний повторно: заповнені таблиці не перезаписуються.</p>
-            <label>Логін адміна</label>
-            <input type="text" name="admin_user" autocomplete="username" required>
-            <label>Пароль адміна</label>
-            <input type="password" name="admin_pass" autocomplete="current-password" required>
-            <label><input type="checkbox" name="confirm_migrate" value="1"> Імпортувати JSON у MySQL і зробити backup</label>
-            <button type="submit">Запустити міграцію</button>
-        </form>
-    </div>
+    <form method="post" class="hi-card">
+        <p class="hi-lead"><?= hs_migrate_page_h($t['migrate_auth_hint'] ?? '') ?></p>
+        <div class="hi-grid hi-grid-2">
+            <div><label class="hi-label"><?= hs_migrate_page_h($t['migrate_lbl_user'] ?? '') ?></label>
+                <input class="hi-input" type="text" name="admin_user" autocomplete="username" required></div>
+            <div><label class="hi-label"><?= hs_migrate_page_h($t['migrate_lbl_pass'] ?? '') ?></label>
+                <input class="hi-input" type="password" name="admin_pass" autocomplete="current-password" required></div>
+        </div>
+        <label class="hi-chk"><input type="checkbox" name="confirm_migrate" value="1" required> <?= hs_migrate_page_h($t['migrate_confirm'] ?? '') ?></label>
+        <button type="submit" class="hi-btn"><i class="fa-solid fa-database"></i> <?= hs_migrate_page_h($t['migrate_submit'] ?? '') ?></button>
+    </form>
     <?php endif; ?>
 
-    <p class="muted"><a href="<?= hs_migrate_h($homeUrl) ?>">← На головну</a></p>
+    <footer class="hi-foot">
+        <p><?= hs_migrate_page_h($t['foot_note'] ?? '') ?></p>
+    </footer>
 </div>
 </body>
 </html>

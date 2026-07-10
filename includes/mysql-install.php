@@ -252,6 +252,8 @@ function hs_install_import_seed(PDO $pdo, string $prefix, array $seed): void
     $meta = $pdo->prepare('INSERT INTO `' . $pfx . 'meta` (`meta_key`, `meta_value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `meta_value` = VALUES(`meta_value`)');
     $meta->execute(['schema_version', HS_MYSQL_SCHEMA_VERSION]);
     $meta->execute(['installed_at', gmdate('c')]);
+    $meta->execute(['license_started_at', gmdate('c')]);
+    $meta->execute(['license_demo_days', '30']);
 }
 
 function hs_install_create_demo_files(string $appRoot): void

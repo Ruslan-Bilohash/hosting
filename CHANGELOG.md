@@ -2,6 +2,13 @@
 
 All notable changes to BILOHASH Hosting CMS.
 
+## [2.6.1] — 2026-07-10
+
+### Added
+- Full multilingual install wizard (uk/en/no): overview, 30-day demo license, security checklist, MySQL + JSON migration
+- Shared `assets/css/install.css` design for install.php and migrate-to-mysql.php
+- `lang/install-*.php` translation files
+
 ## [2.6.0] — 2026-07-10
 
 ### Added
