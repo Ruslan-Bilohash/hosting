@@ -3,7 +3,7 @@
 **hPanel-grade hosting control panel** — sell plans, domains, invoices and a full **BILOHASH CMS ecosystem** (15+ apps) from one PHP panel.
 
 - **Live demo:** https://bilohash.com/hosting/
-- **Version:** see `includes/version.php` (currently v2.5.0)
+- **Version:** see `includes/version.php` (currently v2.5.1)
 - **Stack:** PHP 8.2+, JSON storage today → **full MySQL migration planned**
 
 ## Quick start (local)
