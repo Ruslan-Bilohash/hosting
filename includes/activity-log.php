@@ -149,11 +149,14 @@ function hs_activity_log_client_country(string $ip = ''): string
 }
 
 /** @param array<string,mixed> $entry */
-function hs_activity_log_entry_country_code(array $entry): string
+function hs_activity_log_entry_country_code(array $entry, bool $resolveMissing = false): string
 {
     $code = strtoupper(trim((string) ($entry['country'] ?? '')));
     if ($code !== '' && preg_match('/^[A-Z]{2}$/', $code)) {
         return $code;
+    }
+    if (!$resolveMissing) {
+        return '';
     }
     $ip = trim((string) ($entry['ip'] ?? ''));
     if ($ip === '') {
@@ -164,9 +167,9 @@ function hs_activity_log_entry_country_code(array $entry): string
 }
 
 /** @param array<string,mixed> $entry */
-function hs_activity_log_entry_country_label(array $entry, string $lang, array $t = []): string
+function hs_activity_log_entry_country_label(array $entry, string $lang, array $t = [], bool $resolveMissing = false): string
 {
-    $code = hs_activity_log_entry_country_code($entry);
+    $code = hs_activity_log_entry_country_code($entry, $resolveMissing);
     if ($code === '') {
         return '';
     }
@@ -274,7 +277,7 @@ function hs_activity_log_stats(string $userId): array
             if ($lastLogin === '') {
                 $lastLogin = (string) ($e['at'] ?? '');
                 $lastLoginIp = trim((string) ($e['ip'] ?? ''));
-                $lastLoginCountry = hs_activity_log_entry_country_code($e);
+                $lastLoginCountry = hs_activity_log_entry_country_code($e, true);
             }
         } elseif ($type === 'change') {
             $changes++;
