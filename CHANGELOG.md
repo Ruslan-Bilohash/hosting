@@ -2,6 +2,23 @@
 
 All notable changes to BILOHASH Hosting CMS.
 
+## [2.7.0] — 2026-07-10
+
+### Added
+- **30-day FREE demo license** — documented in `LICENSE.md`; install wizard records `license_started_at` + `license_demo_days=30`
+- **WebP screenshot gallery** — 60 panel screenshots in `docs/screenshots/` (lossless-quality WebP from `screenshot/`)
+- **BILOHASH Webmail** — IMAP/SMTP client at `webmail.bilohash.com` with flexible Hostinger SMTP/IMAP overrides via `config.local.php`
+- Rewritten **README.md**, **README-ua.md**, **README-no.md** with full feature docs and screenshot galleries
+- News article: https://bilohash.com/news/hosting.html
+
+### Improved
+- **Malware scanner** (`panel/security.php?tab=malware`) — severity badges (critical/high/medium), expanded patterns, findings summary, scan scope legend
+- Portfolio homepage & news hub — Hosting CMS in ecosystem planets (Nucleus), live projects and featured cards
+
+### Links
+- Live demo: https://bilohash.com/hosting/
+- License contact: info@bilohash.com
+
 ## [2.6.4] — 2026-07-10
 
 ### Fixed

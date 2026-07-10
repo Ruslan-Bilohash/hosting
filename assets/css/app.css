@@ -1562,6 +1562,18 @@ a:hover { text-decoration: underline; }
 .hp-sec-grid > .hp-card { height: 100%; }
 .hp-sec-ok { color: var(--hs-success); font-weight: 600; }
 .hp-sec-ok i { margin-right: .35rem; }
+.hs-malware-scope { font-size: .9rem; margin: .5rem 0 1rem; }
+.hs-malware-scope i { margin-right: .35rem; opacity: .85; }
+.hs-malware-summary { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; margin: 1rem 0; padding: .75rem 1rem; background: rgba(15, 23, 42, .35); border: 1px solid var(--hs-border); border-radius: .5rem; }
+.hs-malware-table code { font-size: .8rem; word-break: break-all; }
+.hs-sev-badge { display: inline-block; padding: .12rem .45rem; border-radius: .3rem; font-size: .7rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
+.hs-sev-critical { background: #7f1d1d; color: #fecaca; }
+.hs-sev-high { background: #9a3412; color: #fed7aa; }
+.hs-sev-medium { background: #854d0e; color: #fef08a; }
+.hs-malware-legend { margin-top: 1rem; }
+.hs-malware-legend summary { cursor: pointer; font-weight: 600; color: var(--hs-text-muted); }
+.hs-malware-legend ul { margin: .5rem 0 0; padding-left: 1.25rem; }
+.hs-malware-legend li { margin: .35rem 0; }
 
 /* ——— File manager (IDE-style, Monaco editor) ——— */
 .hs-fm-page .hp-content { max-width: none; padding: .5rem 1rem 1rem; }

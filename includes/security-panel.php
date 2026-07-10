@@ -149,20 +149,64 @@ function hs_sec_set_ip_block(array $user, array $blocked): array
     return ['ok' => true];
 }
 
-/** @return array<string, string> */
+/** @return list<array{regex:string,type:string,severity:string}> */
 function hs_sec_malware_patterns(): array
 {
     return [
-        '/eval\s*\(\s*base64_decode\s*\(/i' => 'eval_base64',
-        '/gzinflate\s*\(\s*base64_decode/i' => 'gzinflate_obfuscated',
-        '/preg_replace\s*\([^)]*\/e["\']/i' => 'preg_replace_e',
-        '/shell_exec\s*\(/i' => 'shell_exec',
-        '/passthru\s*\(/i' => 'passthru',
-        '/system\s*\(\s*\$_/i' => 'system_superglobal',
-        '/assert\s*\(\s*\$_/i' => 'assert_injection',
-        '/FilesMan/i' => 'webshell_filesman',
-        '/c99shell|r57shell|WSO\s/i' => 'known_shell',
+        ['regex' => '/eval\s*\(\s*base64_decode\s*\(/i', 'type' => 'eval_base64', 'severity' => 'critical'],
+        ['regex' => '/eval\s*\(\s*gzinflate\s*\(/i', 'type' => 'eval_gzinflate', 'severity' => 'critical'],
+        ['regex' => '/gzinflate\s*\(\s*base64_decode/i', 'type' => 'gzinflate_obfuscated', 'severity' => 'critical'],
+        ['regex' => '/preg_replace\s*\([^)]*\/e["\']/i', 'type' => 'preg_replace_e', 'severity' => 'critical'],
+        ['regex' => '/\b(system|exec|shell_exec|passthru|proc_open)\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)/i', 'type' => 'rce_superglobal', 'severity' => 'critical'],
+        ['regex' => '/\b(include|require)(_once)?\s*\(?\s*\$_(GET|POST|REQUEST)/i', 'type' => 'dynamic_include', 'severity' => 'critical'],
+        ['regex' => '/FilesMan|b374k|IndoXploit/i', 'type' => 'webshell_known', 'severity' => 'critical'],
+        ['regex' => '/c99shell|r57shell|WSO\s|Fx29sh/i', 'type' => 'known_shell', 'severity' => 'critical'],
+        ['regex' => '/shell_exec\s*\(/i', 'type' => 'shell_exec', 'severity' => 'high'],
+        ['regex' => '/passthru\s*\(/i', 'type' => 'passthru', 'severity' => 'high'],
+        ['regex' => '/proc_open\s*\(/i', 'type' => 'proc_open', 'severity' => 'high'],
+        ['regex' => '/\bexec\s*\(/i', 'type' => 'exec_call', 'severity' => 'high'],
+        ['regex' => '/system\s*\(\s*\$_/i', 'type' => 'system_superglobal', 'severity' => 'high'],
+        ['regex' => '/assert\s*\(\s*\$_/i', 'type' => 'assert_injection', 'severity' => 'high'],
+        ['regex' => '/create_function\s*\(/i', 'type' => 'create_function', 'severity' => 'high'],
+        ['regex' => '/base64_decode\s*\(\s*["\'][A-Za-z0-9+\/]{80,}/i', 'type' => 'long_base64', 'severity' => 'medium'],
+        ['regex' => '/php:\/\/input/i', 'type' => 'php_input_stream', 'severity' => 'medium'],
+        ['regex' => '/chmod\s*\([^)]*0777/i', 'type' => 'chmod_world', 'severity' => 'medium'],
     ];
+}
+
+/** @return array<string, string> */
+function hs_sec_malware_threat_labels(): array
+{
+    return [
+        'eval_base64' => 'sec_threat_eval_base64',
+        'eval_gzinflate' => 'sec_threat_eval_gzinflate',
+        'gzinflate_obfuscated' => 'sec_threat_gzinflate_obfuscated',
+        'preg_replace_e' => 'sec_threat_preg_replace_e',
+        'rce_superglobal' => 'sec_threat_rce_superglobal',
+        'dynamic_include' => 'sec_threat_dynamic_include',
+        'webshell_known' => 'sec_threat_webshell_known',
+        'known_shell' => 'sec_threat_known_shell',
+        'shell_exec' => 'sec_threat_shell_exec',
+        'passthru' => 'sec_threat_passthru',
+        'proc_open' => 'sec_threat_proc_open',
+        'exec_call' => 'sec_threat_exec_call',
+        'system_superglobal' => 'sec_threat_system_superglobal',
+        'assert_injection' => 'sec_threat_assert_injection',
+        'create_function' => 'sec_threat_create_function',
+        'long_base64' => 'sec_threat_long_base64',
+        'php_input_stream' => 'sec_threat_php_input_stream',
+        'chmod_world' => 'sec_threat_chmod_world',
+    ];
+}
+
+function hs_sec_malware_severity_rank(string $severity): int
+{
+    return match ($severity) {
+        'critical' => 0,
+        'high' => 1,
+        'medium' => 2,
+        default => 3,
+    };
 }
 
 /** @return array{ok:bool,status:string,scanned:int,findings:list<array<string,string>>,error?:string} */
@@ -208,19 +252,22 @@ function hs_sec_run_malware_scan(array $user): array
         if ($content === false || $content === '') {
             continue;
         }
-        foreach ($patterns as $regex => $type) {
-            if (preg_match($regex, $content, $m, PREG_OFFSET_CAPTURE)) {
-                $line = 1;
-                if (isset($m[0][1])) {
-                    $line = substr_count(substr($content, 0, (int) $m[0][1]), "\n") + 1;
-                }
-                $findings[] = [
-                    'path' => $rel,
-                    'type' => $type,
-                    'line' => (string) $line,
-                ];
-                break;
+        foreach ($patterns as $pattern) {
+            $regex = (string) ($pattern['regex'] ?? '');
+            if ($regex === '' || !preg_match($regex, $content, $m, PREG_OFFSET_CAPTURE)) {
+                continue;
             }
+            $line = 1;
+            if (isset($m[0][1])) {
+                $line = substr_count(substr($content, 0, (int) $m[0][1]), "\n") + 1;
+            }
+            $findings[] = [
+                'path' => $rel,
+                'type' => (string) ($pattern['type'] ?? 'unknown'),
+                'severity' => (string) ($pattern['severity'] ?? 'medium'),
+                'line' => (string) $line,
+            ];
+            break;
         }
         if (count($findings) >= 50) {
             break;
@@ -285,10 +332,51 @@ function hs_sec_render_findings(array $findings, array $t): string
     if ($findings === []) {
         return '<p class="hp-muted hp-sec-ok"><i class="fa-solid fa-circle-check"></i> ' . hs_h($t['security_scan_ok'] ?? 'Clean') . '</p>';
     }
-    $rows = array_map(static fn($f) => '<tr><td><code>' . hs_h((string) ($f['path'] ?? '')) . '</code></td>'
-        . '<td>' . hs_h((string) ($f['type'] ?? '')) . '</td><td>' . hs_h((string) ($f['line'] ?? '')) . '</td></tr>', $findings);
-    return '<div class="hs-table-wrap"><table class="hs-table"><thead><tr><th>'
+
+    $labels = hs_sec_malware_threat_labels();
+    $counts = ['critical' => 0, 'high' => 0, 'medium' => 0];
+    foreach ($findings as $f) {
+        $sev = (string) ($f['severity'] ?? 'medium');
+        if (isset($counts[$sev])) {
+            $counts[$sev]++;
+        }
+    }
+
+    usort($findings, static function (array $a, array $b): int {
+        $ra = hs_sec_malware_severity_rank((string) ($a['severity'] ?? 'medium'));
+        $rb = hs_sec_malware_severity_rank((string) ($b['severity'] ?? 'medium'));
+        return $ra <=> $rb;
+    });
+
+    $badge = static function (string $severity) use ($t): string {
+        $key = 'sec_sev_' . $severity;
+        $label = $t[$key] ?? ucfirst($severity);
+        return '<span class="hs-sev-badge hs-sev-' . hs_h($severity) . '">' . hs_h($label) . '</span>';
+    };
+
+    $summary = '<div class="hs-malware-summary">'
+        . '<span><strong>' . hs_h($t['sec_findings_total'] ?? 'Findings') . ':</strong> ' . count($findings) . '</span>';
+    foreach ($counts as $sev => $n) {
+        if ($n > 0) {
+            $summary .= '<span>' . $badge($sev) . ' ' . $n . '</span>';
+        }
+    }
+    $summary .= '</div>';
+
+    $rows = [];
+    foreach ($findings as $f) {
+        $type = (string) ($f['type'] ?? '');
+        $labelKey = $labels[$type] ?? '';
+        $threatLabel = $labelKey !== '' && !empty($t[$labelKey]) ? (string) $t[$labelKey] : $type;
+        $rows[] = '<tr><td><code>' . hs_h((string) ($f['path'] ?? '')) . '</code></td>'
+            . '<td>' . $badge((string) ($f['severity'] ?? 'medium')) . '</td>'
+            . '<td>' . hs_h($threatLabel) . '</td><td>' . hs_h((string) ($f['line'] ?? '')) . '</td></tr>';
+    }
+
+    return $summary
+        . '<div class="hs-table-wrap"><table class="hs-table hs-malware-table"><thead><tr><th>'
         . hs_h($t['sec_finding_file'] ?? 'File') . '</th><th>'
+        . hs_h($t['sec_finding_severity'] ?? 'Severity') . '</th><th>'
         . hs_h($t['sec_finding_type'] ?? 'Threat') . '</th><th>'
         . hs_h($t['sec_finding_line'] ?? 'Line') . '</th></tr></thead><tbody>'
         . implode('', $rows) . '</tbody></table></div>';

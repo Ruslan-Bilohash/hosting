@@ -1,12 +1,30 @@
 # BILOHASH Hosting CMS
 
-**hPanel-klasse hostingkontrollpanel** — selg planer, domener, fakturaer og hele **BILOHASH CMS-økosystemet** (15+ apper) fra ett PHP-panel.
+**PHP hostingkontrollpanel på hPanel-nivå** — selg planer, domener, fakturaer, e-post og installer hele **BILOHASH CMS-økosystemet** (15+ apper) fra ett panel.
 
-- **Demo:** https://bilohash.com/hosting/
-- **Versjon:** `includes/version.php` (nå v2.5.0)
-- **Stack:** PHP 8.2+, JSON i dag → **full MySQL-migrering planlagt**
+| | |
+|---|---|
+| **Live demo** | https://bilohash.com/hosting/ |
+| **Versjon** | **v2.7.0** |
+| **Lisens** | **30 dagers GRATIS demo** — deretter [info@bilohash.com](mailto:info@bilohash.com) ([LICENSE.md](LICENSE.md)) |
+| **Stack** | PHP 8.2+, MySQL 2.0, JSON fallback, Hostinger-deploy |
+| **Språk** | Ukrainsk, engelsk, norsk |
+| **Webmail** | https://webmail.bilohash.com/ |
+| **Nyhet** | https://bilohash.com/news/hosting.html |
 
-## Rask start
+![Dashboard](docs/screenshots/dashboard.webp)
+
+---
+
+## 30 dagers gratis demo-lisens
+
+Ved installasjon (`/install.php`) registreres **30 kalenderdager** evaluering. I demo-perioden kan du bruke alle funksjoner på egen server.
+
+Etter 30 dager kreves kommersiell lisens fra BILOHASH: **info@bilohash.com**
+
+---
+
+## Hurtigstart
 
 ```bash
 git clone https://github.com/Ruslan-Bilohash/hosting.git
@@ -14,43 +32,73 @@ cd hosting
 php -S localhost:8080
 ```
 
-Åpne http://localhost:8080/ — demobrukere opprettes automatisk.
-
 ### Demo-pålogging
 
 | Rolle | Bruker | Passord | URL |
 |-------|--------|---------|-----|
-| Kunde | `demo` | `demo` | `/login.php` → `/panel/` |
+| Klient | `demo` | `demo` | `/panel/` |
 | Plattformadmin | `admin` | `admin` | `/login.php` |
 | Super-admin | `admin` | `admin` | `/admin/login.php` |
 
+---
+
+## Skjermbildegalleri (WebP)
+
+Alle bilder er **WebP uten kvalitetstap** (`screenshot/*.jpg` → `docs/screenshots/*.webp`, kvalitet 92).  
+Produksjon: `https://bilohash.com/hosting/docs/screenshots/<navn>.webp`
+
+### Dashboard og konto
+
+![dashboard](docs/screenshots/dashboard.webp) · ![dashboard2](docs/screenshots/dashboard2.webp) · ![account](docs/screenshots/account.webp) · ![analytics](docs/screenshots/analytics.webp) · ![activity_history](docs/screenshots/activity_history.webp)
+
+### Domener og DNS
+
+![domains](docs/screenshots/domains.webp) · ![subdomains](docs/screenshots/subdomains.webp) · ![dns-zone](docs/screenshots/dns-zone.webp) · ![register_domains](docs/screenshots/register_domains.webp)
+
+### Nettsteder og installer
+
+![website](docs/screenshots/website.webp) · ![builder_website](docs/screenshots/builder_website.webp) · ![auto_installer](docs/screenshots/auto_installer.webp) · ![migrate_website](docs/screenshots/migrate_website.webp)
+
+### WordPress og databaser
+
+![install_wordpress](docs/screenshots/install_wordpress.webp) · ![databases_management](docs/screenshots/databases_management.webp) · ![phpmyadmin](docs/screenshots/phpmyadmin.webp)
+
+### E-post, filer, sikkerhet
+
+![manager_email](docs/screenshots/manager_email.webp) · ![file_manager](docs/screenshots/file_manager.webp) · ![security](docs/screenshots/security.webp) · ![ssl](docs/screenshots/ssl.webp)
+
+**Malware-skanner** — 18 mønstre med **kritisk / høy / middels** alvorlighetsgrad.
+
+### Ytelse, backup, support
+
+![performance](docs/screenshots/performance.webp) · ![backups](docs/screenshots/backups.webp) · ![support](docs/screenshots/support.webp) · ![invoices](docs/screenshots/invoices.webp) · ![clients](docs/screenshots/clients.webp)
+
+### AI API
+
+![grok_api](docs/screenshots/grok_api.webp) · ![chat_gpt_api](docs/screenshots/chat_gpt_api.webp)
+
+---
+
 ## Funksjoner
 
-- **Kundepanel** — dashboard, domener, DNS, filer, MySQL, backup, SSL, ytelse, support, fakturaer, landing, WordPress, Git
-- **15 «planeter»** — Shop, Booking, Auction, Faktura, News, AI… installasjon med ett klikk
-- **Forretning** — auto-fakturaer, kunde-ID `BH-CL-#####`, support-postkasser, aktivitetslogg (20 per side)
-- **Språk** — ukrainsk, engelsk, norsk
-- **Deploy** — `scripts/deploy-to-hostinger.ps1`
+- **40+ verktøy** i klientpanel (domener, DNS, filer, MySQL, SSL, backup, fakturaer, analyse)
+- **15 økosystem-planeter** — Shop, Booking, Auction, Faktura… ett klikk
+- **MySQL 2.0** — full JSON-migrering via `/migrate-to-mysql.php`
+- **BILOHASH Webmail** — IMAP/SMTP med fleksible Hostinger-innstillinger
 
-## Konfigurasjon
+---
 
-1. `config.local.example.php` → `config.local.php` (SSH, server-IP — **aldri commit**)
-2. `scripts/deploy.config.example.ps1` → `scripts/deploy.config.local.ps1`
-3. `data/db.config.example.php` → `data/db.config.php`
+## Deploy
 
-**Ikke last opp til Git:** `config.local.php`, `deploy.config.local.ps1`, `data/*.json`, `data/*.config.php`, kundemapper i `public_html/`.
+```powershell
+powershell -NoProfile -File scripts/deploy-to-hostinger.ps1
+```
 
-## Veikart
-
-- [x] hPanel-UI, økosystem-installer, fakturaer
-- [x] Aktivitetslogg i `data/logs/{userId}.json`
-- [x] `php.ini` per konto
-- [ ] **Full MySQL-migrering**
-- [ ] Betalingsgateway
-- [ ] Domeneregistrar-API
+---
 
 ## Lenker
 
-- [CHANGELOG.md](CHANGELOG.md)
-- [README.md](README.md) · [README-ua.md](README-ua.md)
-- [GitHub](https://github.com/Ruslan-Bilohash/hosting)
+- Demo: https://bilohash.com/hosting/  
+- Lisens: info@bilohash.com  
+- GitHub: https://github.com/Ruslan-Bilohash/hosting  
+- Changelog: [CHANGELOG.md](CHANGELOG.md)

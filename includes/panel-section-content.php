@@ -174,12 +174,21 @@ function hs_panel_security_content(string $tab, array $ctx): string
         'malware' => $alerts . hs_render_card(
             $t['tab_sec_malware'] ?? '',
             '<p class="hp-muted">' . hs_h($t['sec_malware_hint'] ?? '') . '</p>'
+            . '<p class="hp-muted hs-malware-scope"><i class="fa-solid fa-folder-tree"></i> '
+            . hs_h($t['sec_malware_scope'] ?? '') . '</p>'
             . hs_panel_status_card('', [
                 $statusRow($t['security_malware'] ?? '', ($s['malware_status'] ?? 'clean') === 'clean' && $findings === [], $t['security_scan_ok'] ?? 'Clean', $t['sec_malware_found'] ?? 'Issues'),
                 [$t['sec_last_scan'] ?? 'Last scan', !empty($s['malware_last_scan']) ? hs_h(hs_format_date((string) $s['malware_last_scan'])) : '—', !empty($s['malware_last_scan'])],
                 [$t['sec_files_scanned'] ?? 'Files scanned', (string) (int) ($s['malware_scanned'] ?? 0), (int) ($s['malware_scanned'] ?? 0) > 0],
+                [$t['sec_patterns_count'] ?? 'Patterns', (string) count(hs_sec_malware_patterns()), true],
             ])
-            . hs_sec_render_findings($findings, $t),
+            . hs_sec_render_findings($findings, $t)
+            . '<details class="hs-malware-legend"><summary>' . hs_h($t['sec_malware_legend'] ?? 'Severity legend') . '</summary>'
+            . '<ul class="hp-muted">'
+            . '<li><span class="hs-sev-badge hs-sev-critical">' . hs_h($t['sec_sev_critical'] ?? 'Critical') . '</span> — ' . hs_h($t['sec_sev_critical_desc'] ?? '') . '</li>'
+            . '<li><span class="hs-sev-badge hs-sev-high">' . hs_h($t['sec_sev_high'] ?? 'High') . '</span> — ' . hs_h($t['sec_sev_high_desc'] ?? '') . '</li>'
+            . '<li><span class="hs-sev-badge hs-sev-medium">' . hs_h($t['sec_sev_medium'] ?? 'Medium') . '</span> — ' . hs_h($t['sec_sev_medium_desc'] ?? '') . '</li>'
+            . '</ul></details>',
             '<form method="post">' . hs_csrf_field() . '<button type="submit" name="run_malware_scan" value="1" class="hs-btn hs-btn-primary"><i class="fa-solid fa-shield-virus"></i> ' . hs_h($t['sec_run_scan'] ?? 'Run scan') . '</button></form>'
         ),
         'wpupdate' => $alerts . hs_panel_sec_card(
