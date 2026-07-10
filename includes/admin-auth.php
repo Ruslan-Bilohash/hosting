@@ -23,6 +23,53 @@ function hs_admin_accounts(): array
     ];
 }
 
+/** Reset super-admin password to admin/admin in demo mode (admin.config.php). */
+function hs_sync_admin_config(): void
+{
+    if (!defined('HS_DEMO_MODE') || !HS_DEMO_MODE) {
+        return;
+    }
+    if (!is_dir(HS_DATA_DIR) && !mkdir(HS_DATA_DIR, 0750, true)) {
+        return;
+    }
+    $hash = password_hash('admin', PASSWORD_DEFAULT);
+    $cfg = [
+        'user' => 'admin',
+        'password_hash' => $hash,
+        'role' => 'super',
+    ];
+    $php = "<?php\ndeclare(strict_types=1);\n\nreturn " . var_export($cfg, true) . ";\n";
+    $file = HS_DATA_DIR . '/admin.config.php';
+    if (file_put_contents($file, $php, LOCK_EX) === false) {
+        return;
+    }
+    @chmod($file, 0640);
+}
+
+/** Super-admin UI session or platform admin logged in via /login.php */
+function hs_admin_or_platform_user(): ?array
+{
+    if (hs_admin_logged()) {
+        return ['source' => 'super', 'user' => (string) ($_SESSION[HS_ADMIN_USER_KEY] ?? 'admin')];
+    }
+    require_once __DIR__ . '/client-auth.php';
+    require_once __DIR__ . '/impersonation.php';
+    $client = hs_client_user();
+    if ($client !== null && hs_is_platform_admin($client)) {
+        return ['source' => 'panel', 'user' => $client];
+    }
+    return null;
+}
+
+function hs_admin_or_platform_require(): void
+{
+    if (hs_admin_or_platform_user() !== null) {
+        return;
+    }
+    header('Location: ' . hs_url('admin/login.php'), true, 302);
+    exit;
+}
+
 /** Usernames that may open Clients / impersonation in the client panel */
 function hs_platform_admin_usernames(): array
 {

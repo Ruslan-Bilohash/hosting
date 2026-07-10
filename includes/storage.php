@@ -259,6 +259,8 @@ function hs_sync_demo_users(): bool
 
 function hs_seed_demo_data(): void
 {
+    require_once __DIR__ . '/admin-auth.php';
+    hs_sync_admin_config();
     $existing = hs_users();
     if ($existing !== []) {
         hs_sync_demo_users();
