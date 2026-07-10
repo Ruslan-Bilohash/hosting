@@ -93,6 +93,20 @@ function hs_admin_logged(): bool
     return !empty($_SESSION[HS_ADMIN_SESSION]);
 }
 
+function hs_admin_verify_credentials(string $user, string $pass): bool
+{
+    foreach (hs_admin_accounts() as $acc) {
+        $ok = isset($acc['password_hash']) && $acc['password_hash'] !== ''
+            ? password_verify($pass, (string) $acc['password_hash'])
+            : ($user === ($acc['user'] ?? '') && $pass === ($acc['pass'] ?? ''));
+        if ($user === ($acc['user'] ?? '') && $ok) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function hs_admin_login(string $user, string $pass): bool
 {
     if (!hs_rate_limit('admin_login', 5, 600)) {

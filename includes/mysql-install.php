@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const HS_MYSQL_SCHEMA_VERSION = '1.0.0';
+const HS_MYSQL_SCHEMA_VERSION = '2.0.0';
 
 function hs_install_prefix_safe(string $prefix): string
 {

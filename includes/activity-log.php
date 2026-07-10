@@ -26,6 +26,10 @@ function hs_activity_log_user_file(string $userId): string
 /** @return array{user_id:string,entries:list<array<string,mixed>>,migrated_settings?:bool} */
 function hs_activity_log_load(string $userId): array
 {
+    if (hs_is_mysql_installed()) {
+        require_once __DIR__ . '/db-migrate.php';
+        return hs_db_activity_log_load($userId);
+    }
     $file = hs_activity_log_user_file($userId);
     $data = hs_read_json($file);
     if ($data === []) {
@@ -44,6 +48,10 @@ function hs_activity_log_save(string $userId, array $data): bool
     $data['user_id'] = $userId;
     if (!isset($data['entries']) || !is_array($data['entries'])) {
         $data['entries'] = [];
+    }
+    if (hs_is_mysql_installed()) {
+        require_once __DIR__ . '/db-migrate.php';
+        return hs_db_activity_log_save($userId, $data);
     }
     return hs_write_json(hs_activity_log_user_file($userId), $data);
 }
@@ -102,7 +110,14 @@ function hs_activity_log_country_for_ip(string $ip): string
         return '';
     }
 
-    $cache = hs_read_json(hs_activity_log_geo_cache_file());
+    $cache = [];
+    if (hs_is_mysql_installed()) {
+        require_once __DIR__ . '/db-migrate.php';
+        $cache = hs_db_meta_get_array(HS_DB_META_GEOIP_CACHE, []);
+    }
+    if ($cache === []) {
+        $cache = hs_read_json(hs_activity_log_geo_cache_file());
+    }
     if (!is_array($cache)) {
         $cache = [];
     }
@@ -132,7 +147,12 @@ function hs_activity_log_country_for_ip(string $ip): string
         if (count($cache) > 5000) {
             $cache = array_slice($cache, -4000, null, true);
         }
-        hs_write_json(hs_activity_log_geo_cache_file(), $cache);
+        if (hs_is_mysql_installed()) {
+            require_once __DIR__ . '/db-migrate.php';
+            hs_db_meta_set_array(HS_DB_META_GEOIP_CACHE, $cache);
+        } else {
+            hs_write_json(hs_activity_log_geo_cache_file(), $cache);
+        }
     }
 
     return $code;

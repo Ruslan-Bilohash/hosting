@@ -8,9 +8,16 @@ function hs_client_counter_file(): string
 
 function hs_client_number_next(): string
 {
-    $counter = hs_read_json(hs_client_counter_file());
-    $seq = (int) ($counter['seq'] ?? 0) + 1;
-    hs_write_json(hs_client_counter_file(), ['seq' => $seq]);
+    if (hs_is_mysql_installed()) {
+        require_once __DIR__ . '/db-migrate.php';
+        $counter = hs_db_meta_get_array(HS_DB_META_CLIENT_COUNTER, ['seq' => 0]);
+        $seq = (int) ($counter['seq'] ?? 0) + 1;
+        hs_db_meta_set_array(HS_DB_META_CLIENT_COUNTER, ['seq' => $seq]);
+    } else {
+        $counter = hs_read_json(hs_client_counter_file());
+        $seq = (int) ($counter['seq'] ?? 0) + 1;
+        hs_write_json(hs_client_counter_file(), ['seq' => $seq]);
+    }
     return sprintf('BH-CL-%05d', $seq);
 }
 

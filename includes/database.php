@@ -92,7 +92,8 @@ function hs_is_install_script(): bool
 {
     $script = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
     return str_ends_with($script, '/install.php')
-        || str_ends_with($script, '/migrate-to-mysql.php');
+        || str_ends_with($script, '/migrate-to-mysql.php')
+        || str_ends_with($script, 'migrate-to-mysql.php');
 }
 
 function hs_install_url(): string
@@ -144,6 +145,9 @@ function hs_db_load_collection(string $table): array
 /** @param list<array<string, mixed>> $items */
 function hs_db_save_collection(string $table, array $items, string $idKey): bool
 {
+    if (function_exists('hs_db_ensure_schema')) {
+        hs_db_ensure_schema();
+    }
     $pdo = hs_db_require_pdo();
     $tbl = hs_db_table($table);
     $pdo->beginTransaction();

@@ -19,21 +19,34 @@ function hs_invoice_counter_file(): string
 /** @return list<array<string,mixed>> */
 function hs_invoices_all(): array
 {
+    if (hs_is_mysql_installed()) {
+        return hs_db_load_collection('invoices');
+    }
     $rows = hs_read_json(hs_invoices_file());
     return is_array($rows) ? $rows : [];
 }
 
 function hs_invoices_save(array $invoices): bool
 {
+    if (hs_is_mysql_installed()) {
+        return hs_db_save_collection('invoices', array_values($invoices), 'id');
+    }
     return hs_write_json(hs_invoices_file(), array_values($invoices));
 }
 
 function hs_invoice_next_number(): string
 {
     $year = gmdate('Y');
-    $counter = hs_read_json(hs_invoice_counter_file());
-    $seq = (int) ($counter['seq'] ?? 0) + 1;
-    hs_write_json(hs_invoice_counter_file(), ['year' => $year, 'seq' => $seq]);
+    if (hs_is_mysql_installed()) {
+        require_once __DIR__ . '/db-migrate.php';
+        $counter = hs_db_meta_get_array(HS_DB_META_INVOICE_COUNTER, ['year' => $year, 'seq' => 0]);
+        $seq = (int) ($counter['seq'] ?? 0) + 1;
+        hs_db_meta_set_array(HS_DB_META_INVOICE_COUNTER, ['year' => $year, 'seq' => $seq]);
+    } else {
+        $counter = hs_read_json(hs_invoice_counter_file());
+        $seq = (int) ($counter['seq'] ?? 0) + 1;
+        hs_write_json(hs_invoice_counter_file(), ['year' => $year, 'seq' => $seq]);
+    }
     return sprintf('BH-%s-%05d', $year, $seq);
 }
 

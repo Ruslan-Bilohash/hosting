@@ -5,6 +5,10 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/includes/helpers.php';
 require_once __DIR__ . '/includes/security.php';
 require_once __DIR__ . '/includes/database.php';
+require_once __DIR__ . '/includes/db-migrate.php';
+if (function_exists('hs_is_mysql_installed') && hs_is_mysql_installed()) {
+    hs_db_ensure_schema();
+}
 require_once __DIR__ . '/includes/storage.php';
 
 hs_security_headers();

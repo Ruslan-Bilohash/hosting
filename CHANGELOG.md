@@ -2,6 +2,17 @@
 
 All notable changes to BILOHASH Hosting CMS.
 
+## [2.6.0] — 2026-07-10
+
+### Added
+- **Full MySQL migration (schema 2.0)** — invoices, domain/hosting orders, activity logs, plans catalog, counters, exchange rates, GeoIP cache
+- `migrate-to-mysql.php` — one-time JSON → MySQL import with backup to `data/json-backup/` (requires platform admin credentials)
+- Auto schema upgrade on boot (`hs_db_ensure_schema`)
+
+### Security
+- Platform secrets remain in PHP files only: `db.config.php`, `admin.config.php`, `mysql-provision.config.php`, `client-db/`, `ssh.config.local.php`
+- Client site files stay on disk (`public_html/`)
+
 ## [2.5.6] — 2026-07-10
 
 ### Added

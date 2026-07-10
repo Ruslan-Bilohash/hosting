@@ -15,6 +15,9 @@ function hs_domain_orders_file(): string
 /** @return list<array<string, mixed>> */
 function hs_domain_orders(): array
 {
+    if (hs_is_mysql_installed()) {
+        return array_values(array_filter(hs_db_load_collection('domain_orders'), 'is_array'));
+    }
     $rows = hs_read_json(hs_domain_orders_file());
     return is_array($rows) ? array_values(array_filter($rows, 'is_array')) : [];
 }
@@ -22,6 +25,9 @@ function hs_domain_orders(): array
 /** @param list<array<string, mixed>> $orders */
 function hs_domain_orders_save(array $orders): bool
 {
+    if (hs_is_mysql_installed()) {
+        return hs_db_save_collection('domain_orders', array_values($orders), 'id');
+    }
     return hs_write_json(hs_domain_orders_file(), array_values($orders));
 }
 

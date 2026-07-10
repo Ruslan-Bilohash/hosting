@@ -152,7 +152,12 @@ function hs_plan_catalog_defaults(): array
 function hs_plan_catalog_load(): array
 {
     $defaults = hs_plan_catalog_defaults();
-    $stored = hs_read_json(hs_plan_catalog_file());
+    if (hs_is_mysql_installed()) {
+        require_once __DIR__ . '/db-migrate.php';
+        $stored = hs_db_meta_get_array(HS_DB_META_PLANS_CATALOG, []);
+    } else {
+        $stored = hs_read_json(hs_plan_catalog_file());
+    }
     if ($stored === []) {
         return $defaults;
     }
@@ -199,6 +204,10 @@ function hs_plan_catalog_save(array $data): bool
         'services' => is_array($data['services'] ?? null) ? array_values($data['services']) : [],
         'updated_at' => gmdate('c'),
     ];
+    if (hs_is_mysql_installed()) {
+        require_once __DIR__ . '/db-migrate.php';
+        return hs_db_meta_set_array(HS_DB_META_PLANS_CATALOG, $payload);
+    }
     return hs_write_json(hs_plan_catalog_file(), $payload);
 }
 

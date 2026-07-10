@@ -11,6 +11,9 @@ function hs_hosting_orders_file(): string
 /** @return list<array<string,mixed>> */
 function hs_hosting_orders(): array
 {
+    if (hs_is_mysql_installed()) {
+        return hs_db_load_collection('hosting_orders');
+    }
     $rows = hs_read_json(hs_hosting_orders_file());
     return is_array($rows) ? $rows : [];
 }
@@ -26,6 +29,9 @@ function hs_hosting_order_log(array $order): bool
     array_unshift($orders, $row);
     if (count($orders) > 500) {
         $orders = array_slice($orders, 0, 500);
+    }
+    if (hs_is_mysql_installed()) {
+        return hs_db_save_collection('hosting_orders', $orders, 'id');
     }
     return hs_write_json(hs_hosting_orders_file(), $orders);
 }

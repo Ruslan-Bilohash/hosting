@@ -31,6 +31,14 @@ function hs_exchange_rates(): array
     }
 
     $fallback = ['EUR' => 0.088, 'UAH' => 3.85, 'USD' => 0.095, 'NOK' => 1.0];
+    if (hs_is_mysql_installed()) {
+        require_once __DIR__ . '/db-migrate.php';
+        $raw = hs_db_meta_get_array(HS_DB_META_EXCHANGE_RATES, []);
+        if (is_array($raw) && ($raw['fetched_at'] ?? 0) > time() - 43200 && is_array($raw['rates'] ?? null)) {
+            $cache = array_merge($fallback, $raw['rates']);
+            return $cache;
+        }
+    }
     $file = HS_DATA_DIR . '/exchange-rates.json';
     if (is_readable($file)) {
         $raw = json_decode((string) file_get_contents($file), true);
@@ -54,9 +62,16 @@ function hs_exchange_rates(): array
         }
     }
 
-    if (is_dir(HS_DATA_DIR)) {
+    $payload = [
+        'fetched_at' => time(),
+        'rates' => $rates,
+    ];
+    if (hs_is_mysql_installed()) {
+        require_once __DIR__ . '/db-migrate.php';
+        hs_db_meta_set_array(HS_DB_META_EXCHANGE_RATES, $payload);
+    } elseif (is_dir(HS_DATA_DIR)) {
         @file_put_contents($file, json_encode([
-            'fetched_at' => time(),
+            'fetched_at' => $payload['fetched_at'],
             'rates' => $rates,
         ], JSON_UNESCAPED_UNICODE));
     }

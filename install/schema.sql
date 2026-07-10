@@ -28,6 +28,30 @@ CREATE TABLE IF NOT EXISTS `{prefix}client_databases` (
 
 CREATE TABLE IF NOT EXISTS `{prefix}meta` (
   `meta_key` VARCHAR(64) NOT NULL,
-  `meta_value` TEXT NOT NULL,
+  `meta_value` LONGTEXT NOT NULL,
   PRIMARY KEY (`meta_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `{prefix}invoices` (
+  `id` VARCHAR(64) NOT NULL,
+  `data` JSON NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `{prefix}domain_orders` (
+  `id` VARCHAR(64) NOT NULL,
+  `data` JSON NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `{prefix}hosting_orders` (
+  `id` VARCHAR(64) NOT NULL,
+  `data` JSON NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `{prefix}activity_logs` (
+  `user_id` VARCHAR(64) NOT NULL,
+  `data` JSON NOT NULL,
+  PRIMARY KEY (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
