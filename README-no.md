@@ -5,9 +5,9 @@
 | | |
 |---|---|
 | **Live demo** | https://bilohash.com/hosting/ |
-| **Versjon** | **v2.7.0** |
-| **Lisens** | **30 dagers GRATIS demo** — deretter [info@bilohash.com](mailto:info@bilohash.com) ([LICENSE.md](LICENSE.md)) |
-| **Stack** | PHP 8.2+, MySQL 2.0, JSON fallback, Hostinger-deploy |
+| **Versjon** | **v2.7.1** |
+| **Lisens** | **30 dagers GRATIS demo** — **MySQL 2.0 for testing** — deretter [info@bilohash.com](mailto:info@bilohash.com) ([LICENSE.md](LICENSE.md)) |
+| **Stack** | PHP 8.2+, **MySQL 2.0** (30-dagers demo), JSON fallback, Hostinger-deploy |
 | **Språk** | Ukrainsk, engelsk, norsk |
 | **Webmail** | https://webmail.bilohash.com/ |
 | **Nyhet** | https://bilohash.com/news/hosting.html |
@@ -16,9 +16,9 @@
 
 ---
 
-## 30 dagers gratis demo-lisens
+## 30 dagers gratis demo-lisens (MySQL 2.0)
 
-Ved installasjon (`/install.php`) registreres **30 kalenderdager** evaluering. I demo-perioden kan du bruke alle funksjoner på egen server.
+Ved installasjon (`/install.php`) registreres **30 kalenderdager** evaluering. I demo-perioden kan du bruke **alle funksjoner gratis**, inkludert **full MySQL 2.0** og JSON → MySQL-migrering.
 
 Etter 30 dager kreves kommersiell lisens fra BILOHASH: **info@bilohash.com**
 

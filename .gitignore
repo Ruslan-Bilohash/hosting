@@ -42,6 +42,7 @@ Thumbs.db
 
 # Deploy temp
 _hosting-deploy.zip
+/release-payload.json
 
 # Source screenshots (WebP gallery in docs/screenshots/)
 /screenshot/

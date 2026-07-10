@@ -1,19 +1,22 @@
 # BILOHASH Hosting CMS — License
 
-**Version:** 2.7.0  
+**Version:** 2.7.1  
 **Copyright © 2026 BILOHASH**
 
-## 30-day free demo
+## 30-day free demo (MySQL 2.0 included)
 
-BILOHASH Hosting CMS is provided for **evaluation and demonstration** for **30 calendar days** from the date of installation (`license_started_at` stored in platform meta).
+BILOHASH Hosting CMS is provided for **evaluation and demonstration** for **30 calendar days** from the date of installation (`license_started_at` + `license_demo_days=30` stored in platform meta).
 
-During the demo period you may:
+During the demo period you may **use everything for free**, including:
 
-- Install and run the full panel on your own server
-- Use all client and platform admin features
-- Migrate JSON data to MySQL
-- Install ecosystem apps (Shop, Booking, Faktura, etc.)
-- Self-host and test white-label scenarios
+- **MySQL 2.0** — full schema: users, sites, settings, invoices, domain/hosting orders, activity logs, plans catalog
+- **JSON → MySQL migration** via `/migrate-to-mysql.php` (one-time import for upgrades)
+- Install and run the full hPanel-style panel on your own server
+- All client and platform admin features (40+ tools)
+- Install ecosystem apps (Shop, Booking, Faktura, etc.) into client `public_html`
+- Self-host and test white-label / hosting resale scenarios
+
+This is intended for **testing and evaluation** — not unlimited production use without a license after 30 days.
 
 ## After the demo period
 

@@ -159,6 +159,9 @@ $schemaVer = defined('HS_MYSQL_SCHEMA_VERSION') ? HS_MYSQL_SCHEMA_VERSION : '2.0
         <h2><i class="fa-solid fa-scale-balanced"></i> <?= hs_install_page_h($t['license_title'] ?? '') ?></h2>
         <div class="hi-license-badge"><i class="fa-solid fa-clock"></i> <?= hs_install_page_h($t['license_badge'] ?? '') ?></div>
         <p><?= hs_install_page_h($t['license_p1'] ?? '') ?></p>
+        <?php if (!empty($t['license_mysql_demo'])): ?>
+        <p class="hi-mysql-demo"><i class="fa-solid fa-database"></i> <?= hs_install_page_h($t['license_mysql_demo']) ?></p>
+        <?php endif; ?>
         <p><?= hs_install_page_h($t['license_p2'] ?? '') ?></p>
         <a class="cta" href="<?= hs_install_page_h($t['license_url'] ?? 'https://bilohash.com') ?>" target="_blank" rel="noopener">
             <i class="fa-solid fa-envelope"></i> <?= hs_install_page_h($t['license_contact'] ?? '') ?> — bilohash.com

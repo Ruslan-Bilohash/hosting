@@ -2,6 +2,20 @@
 
 All notable changes to BILOHASH Hosting CMS.
 
+## [2.7.1] — 2026-07-10
+
+### Added
+- **MySQL 2.0 — 30 days FREE for testing** — full MySQL schema (users, sites, invoices, orders, logs) usable at no cost during the demo period; documented in `LICENSE.md`, install wizard (uk/en/no) and GitHub Release notes
+- `docs/GITHUB-RELEASE-v2.7.1.md` — multilingual release description with screenshot gallery links
+
+### Changed
+- Install wizard license block clarifies: MySQL install + JSON migration included in the 30-day evaluation
+- README (en/ua/no) — MySQL 2.0 demo testing highlighted at the top
+
+### License
+- **30-day FREE demo** for self-hosted evaluation and MySQL testing
+- After 30 days: [info@bilohash.com](mailto:info@bilohash.com)
+
 ## [2.7.0] — 2026-07-10
 
 ### Added

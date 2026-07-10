@@ -5,9 +5,9 @@
 | | |
 |---|---|
 | **Live demo** | https://bilohash.com/hosting/ |
-| **Версія** | **v2.7.0** |
-| **Ліцензія** | **30 днів безкоштовно** — далі [info@bilohash.com](mailto:info@bilohash.com) ([LICENSE.md](LICENSE.md)) |
-| **Стек** | PHP 8.2+, MySQL 2.0, JSON fallback, деплой на Hostinger |
+| **Версія** | **v2.7.1** |
+| **Ліцензія** | **30 днів безкоштовно** — **MySQL 2.0 для тесту** — далі [info@bilohash.com](mailto:info@bilohash.com) ([LICENSE.md](LICENSE.md)) |
+| **Стек** | PHP 8.2+, **MySQL 2.0** (30 днів demo), JSON fallback, деплой на Hostinger |
 | **Мови** | Українська, англійська, норвезька |
 | **Веб-пошта** | https://webmail.bilohash.com/ |
 | **Новина** | https://bilohash.com/news/hosting.html |
@@ -16,9 +16,9 @@
 
 ---
 
-## 30-денна безкоштовна demo-ліцензія
+## 30-денна безкоштовна demo-ліцензія (MySQL 2.0)
 
-Під час установки (`/install.php`) фіксується **30 календарних днів** оцінки. У demo доступні всі функції на вашому сервері.
+Під час установки (`/install.php`) фіксується **30 календарних днів** оцінки. У demo **безкоштовно** доступні всі функції, включно з **повною схемою MySQL 2.0** та міграцією JSON → MySQL.
 
 Після 30 днів комерційний resale, white-label і підтримка — за ліцензією BILOHASH: **info@bilohash.com**
 

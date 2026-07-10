@@ -5,9 +5,9 @@
 | | |
 |---|---|
 | **Live demo** | https://bilohash.com/hosting/ |
-| **Version** | **v2.7.0** (see `includes/version.php`) |
-| **License** | **30-day FREE demo** — then [info@bilohash.com](mailto:info@bilohash.com) ([LICENSE.md](LICENSE.md)) |
-| **Stack** | PHP 8.2+, MySQL 2.0 schema, JSON fallback, Hostinger-ready deploy |
+| **Version** | **v2.7.1** (see `includes/version.php`) |
+| **License** | **30-day FREE demo** — **MySQL 2.0 included** for testing — then [info@bilohash.com](mailto:info@bilohash.com) ([LICENSE.md](LICENSE.md)) |
+| **Stack** | PHP 8.2+, **MySQL 2.0** (free 30-day test), JSON fallback, Hostinger-ready deploy |
 | **Languages** | Ukrainian, English, Norwegian (panel + public site) |
 | **Webmail** | https://webmail.bilohash.com/ (IMAP/SMTP, Hostinger defaults) |
 | **News** | https://bilohash.com/news/hosting.html |
@@ -16,9 +16,9 @@
 
 ---
 
-## 30-day free demo license
+## 30-day free demo license (MySQL 2.0 for testing)
 
-On first install (`/install.php`) the platform records a **30-calendar-day evaluation license**. During demo you can use every feature on your own server.
+On first install (`/install.php`) the platform records a **30-calendar-day evaluation license**. During demo you can use **every feature free of charge**, including **full MySQL 2.0** (users, sites, invoices, orders, logs) and **JSON → MySQL migration**.
 
 After 30 days, commercial hosting resale, white-label branding and production support require a license from BILOHASH:
 
