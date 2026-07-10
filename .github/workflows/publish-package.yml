@@ -2,6 +2,9 @@
 name: Publish Package
 
 on:
+  push:
+    tags:
+      - 'v*'
   release:
     types: [published]
   workflow_dispatch:
@@ -32,6 +35,8 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "release" ]; then
             echo "tag=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
           else
             echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
           fi
@@ -57,18 +62,29 @@ jobs:
 
   publish-demo-zip:
     runs-on: ubuntu-latest
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v4
+
+      - name: Resolve version tag
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "tag=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build 30-day demo ZIP
         run: |
           chmod +x scripts/pack-demo-zip.sh
-          ./scripts/pack-demo-zip.sh "${{ github.event.release.tag_name }}"
+          ./scripts/pack-demo-zip.sh "${{ steps.ver.outputs.tag }}"
 
       - name: Upload ZIP to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: BILOHASH Hosting CMS ${{ steps.ver.outputs.tag }}
           files: dist/hosting-cms-demo-30d-*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
