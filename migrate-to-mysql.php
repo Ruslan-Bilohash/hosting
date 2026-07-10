@@ -38,11 +38,15 @@ if ($canRun && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     } elseif (!hs_admin_verify_credentials($adminUser, $adminPass)) {
         $error = hs_install_t($t, 'migrate_error_auth');
     } else {
-        $result = hs_mysql_migrate_from_json(true);
-        if (!empty($result['ok'])) {
-            $migratedAt = (string) hs_db_meta_get_scalar(HS_DB_META_JSON_MIGRATED, '');
-        } else {
-            $error = implode('; ', $result['errors'] ?? ['Migration failed']);
+        try {
+            $result = hs_mysql_migrate_from_json(true);
+            if (!empty($result['ok'])) {
+                $migratedAt = (string) hs_db_meta_get_scalar(HS_DB_META_JSON_MIGRATED, '');
+            } else {
+                $error = implode('; ', $result['errors'] ?? ['Migration failed']);
+            }
+        } catch (Throwable $e) {
+            $error = ($t['migrate_error_fatal'] ?? 'Migration error') . ': ' . $e->getMessage();
         }
     }
 }
@@ -165,6 +169,7 @@ $cssUrl = ($prefix !== '' ? $prefix : '') . '/assets/css/install.css?v=' . rawur
 
     <footer class="hi-foot">
         <p><?= hs_migrate_page_h($t['foot_note'] ?? '') ?></p>
+        <p><a href="mailto:<?= hs_migrate_page_h($t['license_email'] ?? 'info@bilohash.com') ?>"><?= hs_migrate_page_h($t['license_email'] ?? 'info@bilohash.com') ?></a> · <a href="https://bilohash.com" target="_blank" rel="noopener">bilohash.com</a></p>
     </footer>
 </div>
 </body>

@@ -31,6 +31,7 @@ return [
     'license_p1' => 'Programvaren leveres til evaluering og demo i 30 dager fra installasjonsdato. Du kan bruke alle funksjoner i demoperioden på egen server.',
     'license_p2' => 'Etter 30 dager kreves kommersiell lisens fra BILOHASH. Kontakt oss for pris, white-label og produksjonsstøtte.',
     'license_contact' => 'Kontakt for lisens',
+    'license_email' => 'info@bilohash.com',
     'license_url' => 'https://bilohash.com',
     'license_accept' => 'Jeg godtar 30-dagers evalueringsvilkår og kontakter BILOHASH for kommersiell lisens etter demoperioden.',
 
@@ -106,6 +107,7 @@ return [
     'migrate_result_errors' => 'Feil',
     'migrate_error_auth' => 'Ugyldig admin-innlogging.',
     'migrate_error_confirm' => 'Bekreft import-checkbox.',
+    'migrate_error_fatal' => 'Migreringsfeil',
     'migrate_no_mysql' => 'Konfigurer MySQL først via install.php',
     'migrate_back_install' => '← Installasjonsveiviser',
 ];

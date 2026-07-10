@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-define('HS_VERSION', '2.6.3');
+define('HS_VERSION', '2.6.4');
 define('HS_VERSION_DATE', '2026-07-10');
 
 function hs_version(): string

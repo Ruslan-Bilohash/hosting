@@ -89,13 +89,21 @@ function hs_db_ensure_schema(): void
         $pdo = hs_db_require_pdo();
         $pfx = hs_db_prefix();
 
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS `' . $pfx . 'meta` (
+              `meta_key` VARCHAR(64) NOT NULL,
+              `meta_value` LONGTEXT NOT NULL,
+              PRIMARY KEY (`meta_key`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+        );
+
         // Upgrade meta column for large blobs (activity / geoip).
         try {
             $pdo->exec(
                 'ALTER TABLE `' . $pfx . 'meta` MODIFY `meta_value` LONGTEXT NOT NULL'
             );
         } catch (Throwable) {
-            // Table may not exist yet on very old installs.
+            // Column may already be LONGTEXT.
         }
 
         foreach (array_filter(array_map('trim', explode(';', hs_db_schema_sql_v2($pfx)))) as $stmt) {
@@ -116,25 +124,29 @@ function hs_db_ensure_schema(): void
 /** @return mixed */
 function hs_db_meta_get_scalar(string $key, mixed $default = ''): mixed
 {
-    $pdo = hs_db_require_pdo();
-    $stmt = $pdo->prepare(
-        'SELECT `meta_value` FROM `' . hs_db_table('meta') . '` WHERE `meta_key` = ? LIMIT 1'
-    );
-    $stmt->execute([$key]);
-    $row = $stmt->fetch();
-    if (!is_array($row)) {
-        return $default;
-    }
-    $raw = (string) ($row['meta_value'] ?? '');
-    if ($raw === '') {
-        return $default;
-    }
-    $decoded = json_decode($raw, true);
-    if (json_last_error() === JSON_ERROR_NONE) {
-        return $decoded;
-    }
+    try {
+        $pdo = hs_db_require_pdo();
+        $stmt = $pdo->prepare(
+            'SELECT `meta_value` FROM `' . hs_db_table('meta') . '` WHERE `meta_key` = ? LIMIT 1'
+        );
+        $stmt->execute([$key]);
+        $row = $stmt->fetch();
+        if (!is_array($row)) {
+            return $default;
+        }
+        $raw = (string) ($row['meta_value'] ?? '');
+        if ($raw === '') {
+            return $default;
+        }
+        $decoded = json_decode($raw, true);
+        if (json_last_error() === JSON_ERROR_NONE) {
+            return $decoded;
+        }
 
-    return $raw;
+        return $raw;
+    } catch (Throwable) {
+        return $default;
+    }
 }
 
 function hs_db_meta_set_scalar(string $key, mixed $value): bool
@@ -261,7 +273,7 @@ function hs_mysql_migrate_from_json(bool $backup = true): array
 
     foreach ($imports as $spec) {
         $label = (string) $spec['table'];
-        $existing = hs_db_load_collection_raw($label);
+        $existing = hs_db_load_collection($label);
         if ($existing !== []) {
             $result['skipped'][] = $label . ' (already in MySQL)';
             continue;

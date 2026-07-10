@@ -31,6 +31,7 @@ return [
     'license_p1' => 'Програмне забезпечення надається для оцінки та демонстрації протягом 30 днів з дати установки. У демо-період ви можете використовувати всі функції на своєму сервері.',
     'license_p2' => 'Після 30 днів комерційне використання потребує ліцензії від BILOHASH. Зверніться до нас щодо цін, white-label брендингу та підтримки на production.',
     'license_contact' => 'Звʼязатися щодо ліцензії',
+    'license_email' => 'info@bilohash.com',
     'license_url' => 'https://bilohash.com',
     'license_accept' => 'Я приймаю умови 30-денного демо та звернуся до BILOHASH за комерційною ліцензією після демо-періоду.',
 
@@ -106,6 +107,7 @@ return [
     'migrate_result_errors' => 'Помилки',
     'migrate_error_auth' => 'Невірні облікові дані адміна.',
     'migrate_error_confirm' => 'Підтвердіть checkbox імпорту.',
+    'migrate_error_fatal' => 'Помилка міграції',
     'migrate_no_mysql' => 'Спочатку налаштуйте MySQL через install.php',
     'migrate_back_install' => '← Майстер установки',
 ];

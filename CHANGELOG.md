@@ -2,6 +2,14 @@
 
 All notable changes to BILOHASH Hosting CMS.
 
+## [2.6.4] — 2026-07-10
+
+### Fixed
+- **White page on migrate-to-mysql.php** — fatal `hs_db_load_collection_raw()` → use `hs_db_load_collection()`
+- `hs_db_meta_get_scalar()` safe when meta table missing; `hs_db_ensure_schema()` creates meta table
+- `config.local.php` SSH constants no longer re-define (PHP warnings before HTML)
+- Migration POST shows error message instead of blank page on failure
+
 ## [2.6.3] — 2026-07-10
 
 ### Improved

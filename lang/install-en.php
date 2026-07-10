@@ -31,6 +31,7 @@ return [
     'license_p1' => 'This software is provided for evaluation and demonstration for 30 days from the date of installation. You may use all features during the demo period on your own server.',
     'license_p2' => 'After 30 days, continued commercial use requires a license from BILOHASH. Contact us for pricing, white-label branding and production support.',
     'license_contact' => 'Contact for license',
+    'license_email' => 'info@bilohash.com',
     'license_url' => 'https://bilohash.com',
     'license_accept' => 'I accept the 30-day evaluation terms and will contact BILOHASH for a commercial license after the demo period.',
 
@@ -106,6 +107,7 @@ return [
     'migrate_result_errors' => 'Errors',
     'migrate_error_auth' => 'Invalid platform admin credentials.',
     'migrate_error_confirm' => 'Confirm the import checkbox.',
+    'migrate_error_fatal' => 'Migration error',
     'migrate_no_mysql' => 'Configure MySQL first via install.php',
     'migrate_back_install' => '← Installation wizard',
 ];
