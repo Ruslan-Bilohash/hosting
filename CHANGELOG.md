@@ -2,6 +2,11 @@
 
 All notable changes to BILOHASH Hosting CMS.
 
+## [2.6.3] — 2026-07-10
+
+### Improved
+- Panel **Clients** page (`panel/clients.php`): stats bar, status filters, sort, clickable rows, client ID, disk/paid-until columns, edit summary card, analytics shortcut, translated statuses
+
 ## [2.6.2] — 2026-07-10
 
 ### Fixed

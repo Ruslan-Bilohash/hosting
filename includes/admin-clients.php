@@ -83,3 +83,97 @@ function hs_admin_client_row_data(array $user): array
         'site_count' => count($sites),
     ];
 }
+
+function hs_admin_client_status_label(array $t, string $status): string
+{
+    return match ($status) {
+        'active' => (string) ($t['plan_status_active'] ?? 'Active'),
+        'pending' => (string) ($t['plan_status_pending'] ?? 'Pending'),
+        'suspended' => (string) ($t['plan_status_suspended'] ?? 'Suspended'),
+        default => $status,
+    };
+}
+
+function hs_admin_client_paid_class(?string $paidUntil): string
+{
+    if ($paidUntil === null || trim($paidUntil) === '') {
+        return '';
+    }
+    $ts = strtotime($paidUntil);
+    if ($ts === false) {
+        return '';
+    }
+    $days = (int) floor(($ts - time()) / 86400);
+    if ($days < 0) {
+        return 'hs-clients-paid-expired';
+    }
+    if ($days <= 7) {
+        return 'hs-clients-paid-urgent';
+    }
+    if ($days <= 30) {
+        return 'hs-clients-paid-soon';
+    }
+    return '';
+}
+
+function hs_admin_client_matches_filters(array $user, string $q, string $filter): bool
+{
+    $status = (string) ($user['subscription_status'] ?? 'active');
+    if ($filter !== 'all' && $status !== $filter) {
+        return false;
+    }
+    if ($q === '') {
+        return true;
+    }
+    $hay = strtolower(implode(' ', [
+        (string) ($user['username'] ?? ''),
+        (string) ($user['email'] ?? ''),
+        (string) ($user['name'] ?? ''),
+        (string) ($user['plan'] ?? ''),
+        (string) ($user['client_number'] ?? ''),
+        (string) ($user['support_email'] ?? ''),
+    ]));
+    return str_contains($hay, strtolower($q));
+}
+
+/**
+ * @param list<array<string,mixed>> $rows
+ * @return list<array<string,mixed>>
+ */
+function hs_admin_client_sort_rows(array $rows, string $sort): array
+{
+    $sort = $sort !== '' ? $sort : 'name';
+    usort($rows, static function (array $a, array $b) use ($sort): int {
+        $ua = $a['user'];
+        $ub = $b['user'];
+        $cmp = 0;
+        switch ($sort) {
+            case 'plan':
+                $cmp = strcmp((string) ($ua['plan'] ?? ''), (string) ($ub['plan'] ?? ''));
+                break;
+            case 'paid':
+                $ta = !empty($ua['paid_until']) ? strtotime((string) $ua['paid_until']) : 0;
+                $tb = !empty($ub['paid_until']) ? strtotime((string) $ub['paid_until']) : 0;
+                $cmp = $ta <=> $tb;
+                break;
+            case 'disk':
+                $cmp = ((float) ($a['resources']['storage_used_mb'] ?? 0)) <=> ((float) ($b['resources']['storage_used_mb'] ?? 0));
+                break;
+            case 'sites':
+                $cmp = ((int) ($a['site_count'] ?? 0)) <=> ((int) ($b['site_count'] ?? 0));
+                break;
+            case 'created':
+                $ta = !empty($ua['created_at']) ? strtotime((string) $ua['created_at']) : 0;
+                $tb = !empty($ub['created_at']) ? strtotime((string) $ub['created_at']) : 0;
+                $cmp = $ta <=> $tb;
+                break;
+            default:
+                $cmp = strcasecmp(
+                    (string) ($ua['username'] ?? ''),
+                    (string) ($ub['username'] ?? '')
+                );
+        }
+        return $cmp;
+    });
+    return $rows;
+}
