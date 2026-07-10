@@ -72,6 +72,7 @@ return [
     'migrate_lead' => 'Ved oppgradering fra eldre JSON-installasjon: importer fakturaer, ordre og logger i ett steg. JSON-backup i data/json-backup/.',
     'migrate_btn' => 'Åpne migreringsveiviser',
     'migrate_cli' => 'CLI: php scripts/migrate-to-mysql-cli.php',
+    'migrate_json_detected' => 'JSON-filer funnet i data/ — kjør migrering for import til MySQL.',
 
     'success_title' => 'Installasjon fullført',
     'success_lead' => 'MySQL-tabeller opprettet. Konfigurasjon lagret i data/db.config.php.',

@@ -72,6 +72,7 @@ return [
     'migrate_lead' => 'If you upgraded from an older JSON-based install, import remaining data (invoices, orders, activity logs) in one step. JSON backups go to data/json-backup/.',
     'migrate_btn' => 'Open migration wizard',
     'migrate_cli' => 'CLI: php scripts/migrate-to-mysql-cli.php',
+    'migrate_json_detected' => 'JSON files detected in data/ — run migration to import into MySQL.',
 
     'success_title' => 'Installation complete',
     'success_lead' => 'MySQL tables created. Configuration saved to data/db.config.php.',

@@ -2,6 +2,12 @@
 
 All notable changes to BILOHASH Hosting CMS.
 
+## [2.6.2] — 2026-07-10
+
+### Fixed
+- Install/migration wizard HTTP 500 — `ENT_UTF-8` typo in `htmlspecialchars()` (use `ENT_SUBSTITUTE`)
+- Hardcoded English JSON-detected hint on install page — now uk/en/no
+
 ## [2.6.1] — 2026-07-10
 
 ### Added

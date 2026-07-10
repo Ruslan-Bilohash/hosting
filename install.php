@@ -14,7 +14,7 @@ const HS_INSTALL_UI_VERSION = '2.0.0';
 
 function hs_install_page_h(string $s): string
 {
-    return htmlspecialchars($s, ENT_QUOTES | ENT_UTF-8, 'UTF-8');
+    return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
 $lang = hs_install_detect_lang();
@@ -232,7 +232,7 @@ $schemaVer = defined('HS_MYSQL_SCHEMA_VERSION') ? HS_MYSQL_SCHEMA_VERSION : '2.0
         <h2><i class="fa-solid fa-right-left"></i> <?= hs_install_page_h($t['migrate_title'] ?? '') ?></h2>
         <p class="hi-lead"><?= hs_install_page_h($t['migrate_lead'] ?? '') ?></p>
         <?php if ($hasJsonData): ?>
-        <p class="hi-hint"><i class="fa-solid fa-file-code"></i> JSON files detected in data/ — run migration to import into MySQL.</p>
+        <p class="hi-hint"><i class="fa-solid fa-file-code"></i> <?= hs_install_page_h($t['migrate_json_detected'] ?? '') ?></p>
         <?php endif; ?>
         <p class="hi-hint"><code><?= hs_install_page_h($t['migrate_cli'] ?? '') ?></code></p>
         <div class="hi-links">

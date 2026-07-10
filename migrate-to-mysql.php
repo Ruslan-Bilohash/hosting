@@ -21,7 +21,7 @@ if (hs_db_pdo() instanceof PDO) {
 
 function hs_migrate_page_h(string $s): string
 {
-    return htmlspecialchars($s, ENT_QUOTES | ENT_UTF-8, 'UTF-8');
+    return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
 $canRun = hs_db_pdo() instanceof PDO;

@@ -72,6 +72,7 @@ return [
     'migrate_lead' => 'Якщо ви оновлюєтесь зі старої JSON-версії, імпортуйте рахунки, замовлення та журнали одним кроком. Резервні копії JSON — у data/json-backup/.',
     'migrate_btn' => 'Відкрити майстер міграції',
     'migrate_cli' => 'CLI: php scripts/migrate-to-mysql-cli.php',
+    'migrate_json_detected' => 'У data/ знайдено JSON-файли — запустіть міграцію для імпорту в MySQL.',
 
     'success_title' => 'Установку завершено',
     'success_lead' => 'Таблиці MySQL створено. Конфігурацію збережено в data/db.config.php.',
