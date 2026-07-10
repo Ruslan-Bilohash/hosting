@@ -64,6 +64,8 @@ function hs_analytics_user_filter(array $users, string $activeUserId, string $ba
 
 function hs_analytics_render(array $viewUser, string $viewUserId, int $page, array $t, bool $isAdminView = false, array $allUsers = []): string
 {
+    global $lang;
+    $lang = is_string($lang ?? null) && $lang !== '' ? $lang : 'en';
     $stats = hs_activity_log_stats($viewUserId);
     $pager = hs_activity_log_page($viewUserId, $page);
     $baseUrl = hs_url(hs_panel_path('analytics.php'));
@@ -84,7 +86,18 @@ function hs_analytics_render(array $viewUser, string $viewUserId, int $page, arr
 
     $meta = '<p class="hp-muted hs-analytics-meta">';
     if ($stats['last_login'] !== '') {
-        $meta .= hs_h($t['analytics_last_login'] ?? 'Last login') . ': <strong>' . hs_h(hs_format_date($stats['last_login'])) . '</strong> · ';
+        $meta .= hs_h($t['analytics_last_login'] ?? 'Last login') . ': <strong>' . hs_h(hs_format_date($stats['last_login'])) . '</strong>';
+        if ((string) ($stats['last_login_ip'] ?? '') !== '') {
+            $meta .= ' · ' . hs_h($t['analytics_last_login_ip'] ?? 'IP') . ': <strong class="hs-analytics-ip">' . hs_h((string) $stats['last_login_ip']) . '</strong>';
+        }
+        $lastCountryCode = (string) ($stats['last_login_country'] ?? '');
+        if ($lastCountryCode !== '') {
+            $lastCountryLabel = hs_activity_log_entry_country_label(['country' => $lastCountryCode], $lang, $t);
+            if ($lastCountryLabel !== '') {
+                $meta .= ' · ' . hs_h($t['analytics_last_login_country'] ?? 'Country') . ': <strong>' . hs_h($lastCountryLabel) . '</strong>';
+            }
+        }
+        $meta .= ' · ';
     }
     $meta .= hs_h(str_replace(
         ['{total}', '{file}'],
@@ -111,19 +124,19 @@ function hs_analytics_render(array $viewUser, string $viewUserId, int $page, arr
             ? hs_activity_log_format_duration((int) $e['duration_sec'], $t)
             : '—';
         $detail = (string) ($e['detail'] ?? '');
-        $ip = (string) ($e['ip'] ?? '');
-        if ($ip !== '' && $detail === '') {
-            $detail = $ip;
-        } elseif ($ip !== '') {
-            $detail .= ' · ' . $ip;
-        }
+        $ip = trim((string) ($e['ip'] ?? ''));
+        $ipCell = $ip !== '' ? '<code class="hs-analytics-ip">' . hs_h($ip) . '</code>' : '—';
+        $countryLabel = hs_activity_log_entry_country_label($e, $lang, $t);
+        $countryCell = $countryLabel !== '' ? hs_h($countryLabel) : '—';
         $rows[] = '<tr>'
             . '<td class="hs-log-when">' . hs_h(hs_format_date((string) ($e['at'] ?? ''))) . '</td>'
             . '<td><span class="hs-analytics-type hs-analytics-type-' . hs_h($type) . '">' . hs_h(hs_activity_log_type_label($type, $t)) . '</span></td>'
             . '<td class="hs-log-action"><span class="hs-log-action-label">' . hs_h($label) . '</span>'
             . ($action !== '' && $label !== $action ? '<code class="hs-log-action-code">' . hs_h($action) . '</code>' : '')
             . '</td>'
-            . '<td class="hs-log-detail">' . hs_h($detail) . '</td>'
+            . '<td class="hs-analytics-ip">' . $ipCell . '</td>'
+            . '<td class="hs-analytics-country">' . $countryCell . '</td>'
+            . '<td class="hs-log-detail">' . hs_h($detail !== '' ? $detail : '—') . '</td>'
             . '<td class="hs-analytics-duration">' . hs_h($duration) . '</td>'
             . '</tr>';
     }
@@ -133,6 +146,8 @@ function hs_analytics_render(array $viewUser, string $viewUserId, int $page, arr
             $t['adv_history_col_when'] ?? 'When',
             $t['analytics_col_type'] ?? 'Type',
             $t['adv_history_col_action'] ?? 'Action',
+            $t['analytics_col_ip'] ?? 'IP',
+            $t['analytics_col_country'] ?? 'Country',
             $t['adv_history_col_detail'] ?? 'Detail',
             $t['analytics_col_duration'] ?? 'Duration',
         ])

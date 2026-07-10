@@ -2,6 +2,11 @@
 
 All notable changes to BILOHASH Hosting CMS.
 
+## [2.5.6] — 2026-07-10
+
+### Added
+- Analytics: login IP and country columns in activity log; last-login summary shows IP and country (Cloudflare header + GeoIP cache)
+
 ## [2.5.5] — 2026-07-10
 
 ### Fixed

@@ -1329,6 +1329,8 @@ a:hover { text-decoration: underline; }
 .hs-analytics-type-visit { background: #e3f2fd; color: #1565c0; }
 .hs-analytics-type-change { background: #f3e5f5; color: #6a1b9a; }
 .hs-analytics-duration { white-space: nowrap; font-size: .82rem; }
+.hs-analytics-ip { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .82rem; white-space: nowrap; }
+.hs-analytics-country { font-size: .82rem; white-space: nowrap; }
 .hs-analytics-pager { margin-top: 1rem; }
 .hs-analytics-pager-inner { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
 .hs-analytics-pager-info { font-size: .88rem; color: var(--hs-muted); }

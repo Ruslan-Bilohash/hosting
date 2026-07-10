@@ -50,8 +50,129 @@ function hs_activity_log_save(string $userId, array $data): bool
 
 function hs_activity_log_client_ip(): string
 {
-    $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
-    return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '';
+    $candidates = [];
+    if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+        $candidates[] = (string) $_SERVER['HTTP_CF_CONNECTING_IP'];
+    }
+    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        foreach (explode(',', (string) $_SERVER['HTTP_X_FORWARDED_FOR']) as $part) {
+            $candidates[] = trim($part);
+        }
+    }
+    $candidates[] = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+    $fallback = '';
+    foreach ($candidates as $raw) {
+        $ip = trim($raw);
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+            continue;
+        }
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            return $ip;
+        }
+        if ($fallback === '') {
+            $fallback = $ip;
+        }
+    }
+
+    return $fallback;
+}
+
+function hs_activity_log_request_country(): string
+{
+    $code = strtoupper(trim((string) ($_SERVER['HTTP_CF_IPCOUNTRY'] ?? '')));
+    if ($code === '' || $code === 'XX' || $code === 'T1' || !preg_match('/^[A-Z]{2}$/', $code)) {
+        return '';
+    }
+
+    return $code;
+}
+
+function hs_activity_log_geo_cache_file(): string
+{
+    return hs_activity_log_dir() . '/geoip-cache.json';
+}
+
+function hs_activity_log_country_for_ip(string $ip): string
+{
+    $ip = trim($ip);
+    if ($ip === '' || !filter_var($ip, FILTER_VALIDATE_IP)) {
+        return '';
+    }
+    if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+        return '';
+    }
+
+    $cache = hs_read_json(hs_activity_log_geo_cache_file());
+    if (!is_array($cache)) {
+        $cache = [];
+    }
+    if (!empty($cache[$ip]) && is_string($cache[$ip])) {
+        $cached = strtoupper(trim($cache[$ip]));
+        return preg_match('/^[A-Z]{2}$/', $cached) ? $cached : '';
+    }
+
+    $ctx = stream_context_create([
+        'http' => [
+            'timeout' => 2,
+            'ignore_errors' => true,
+            'header' => "User-Agent: BILOHASH-Hosting/1.0\r\n",
+        ],
+    ]);
+    $url = 'http://ip-api.com/json/' . rawurlencode($ip) . '?fields=status,countryCode';
+    $json = @file_get_contents($url, false, $ctx);
+    $code = '';
+    if (is_string($json)) {
+        $data = json_decode($json, true);
+        if (is_array($data) && ($data['status'] ?? '') === 'success') {
+            $code = strtoupper(trim((string) ($data['countryCode'] ?? '')));
+        }
+    }
+    if ($code !== '' && preg_match('/^[A-Z]{2}$/', $code)) {
+        $cache[$ip] = $code;
+        if (count($cache) > 5000) {
+            $cache = array_slice($cache, -4000, null, true);
+        }
+        hs_write_json(hs_activity_log_geo_cache_file(), $cache);
+    }
+
+    return $code;
+}
+
+function hs_activity_log_client_country(string $ip = ''): string
+{
+    $fromHeader = hs_activity_log_request_country();
+    if ($fromHeader !== '') {
+        return $fromHeader;
+    }
+
+    return hs_activity_log_country_for_ip($ip !== '' ? $ip : hs_activity_log_client_ip());
+}
+
+/** @param array<string,mixed> $entry */
+function hs_activity_log_entry_country_code(array $entry): string
+{
+    $code = strtoupper(trim((string) ($entry['country'] ?? '')));
+    if ($code !== '' && preg_match('/^[A-Z]{2}$/', $code)) {
+        return $code;
+    }
+    $ip = trim((string) ($entry['ip'] ?? ''));
+    if ($ip === '') {
+        return '';
+    }
+
+    return hs_activity_log_country_for_ip($ip);
+}
+
+/** @param array<string,mixed> $entry */
+function hs_activity_log_entry_country_label(array $entry, string $lang, array $t = []): string
+{
+    $code = hs_activity_log_entry_country_code($entry);
+    if ($code === '') {
+        return '';
+    }
+    require_once __DIR__ . '/countries.php';
+
+    return hs_country_label($code, $lang, $t);
 }
 
 /** @param array{type:string,action?:string,detail?:string,duration_sec?:int|null,at?:string} $entry */
@@ -62,6 +183,7 @@ function hs_activity_log_append(string $userId, array $entry): void
     }
     hs_activity_log_migrate_from_settings($userId);
     $data = hs_activity_log_load($userId);
+    $ip = hs_activity_log_client_ip();
     $row = [
         'id' => 'l_' . bin2hex(random_bytes(6)),
         'at' => (string) ($entry['at'] ?? gmdate('c')),
@@ -69,7 +191,8 @@ function hs_activity_log_append(string $userId, array $entry): void
         'action' => (string) ($entry['action'] ?? ''),
         'detail' => (string) ($entry['detail'] ?? ''),
         'duration_sec' => isset($entry['duration_sec']) ? (int) $entry['duration_sec'] : null,
-        'ip' => hs_activity_log_client_ip(),
+        'ip' => $ip,
+        'country' => hs_activity_log_client_country($ip),
     ];
     array_unshift($data['entries'], $row);
     if (count($data['entries']) > HS_ACTIVITY_LOG_MAX) {
@@ -134,13 +257,15 @@ function hs_activity_log_page(string $userId, int $page = 1, int $perPage = HS_A
     ];
 }
 
-/** @return array{logins:int,changes:int,visits:int,last_login:string,session_time_sec:int} */
+/** @return array{logins:int,changes:int,visits:int,last_login:string,last_login_ip:string,last_login_country:string,session_time_sec:int} */
 function hs_activity_log_stats(string $userId): array
 {
     $logins = 0;
     $changes = 0;
     $visits = 0;
     $lastLogin = '';
+    $lastLoginIp = '';
+    $lastLoginCountry = '';
     $sessionTime = 0;
     foreach (hs_activity_log_entries($userId) as $e) {
         $type = (string) ($e['type'] ?? '');
@@ -148,6 +273,8 @@ function hs_activity_log_stats(string $userId): array
             $logins++;
             if ($lastLogin === '') {
                 $lastLogin = (string) ($e['at'] ?? '');
+                $lastLoginIp = trim((string) ($e['ip'] ?? ''));
+                $lastLoginCountry = hs_activity_log_entry_country_code($e);
             }
         } elseif ($type === 'change') {
             $changes++;
@@ -162,6 +289,8 @@ function hs_activity_log_stats(string $userId): array
         'changes' => $changes,
         'visits' => $visits,
         'last_login' => $lastLogin,
+        'last_login_ip' => $lastLoginIp,
+        'last_login_country' => $lastLoginCountry,
         'session_time_sec' => $sessionTime,
     ];
 }
