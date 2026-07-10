@@ -1,0 +1,46 @@
+{
+    "name": "bilohash/hosting-cms",
+    "description": "BILOHASH Hosting CMS — hPanel-grade PHP panel, MySQL 2.0, 30-day FREE demo",
+    "type": "project",
+    "license": "proprietary",
+
+    "keywords": ["hosting", "cms", "hpanel", "php", "mysql", "bilohash"],
+    "homepage": "https://bilohash.com/hosting/",
+    "support": {
+        "email": "info@bilohash.com",
+        "issues": "https://github.com/Ruslan-Bilohash/hosting/issues",
+        "source": "https://github.com/Ruslan-Bilohash/hosting"
+    },
+    "authors": [
+        {
+            "name": "BILOHASH",
+            "email": "info@bilohash.com",
+            "homepage": "https://bilohash.com"
+        }
+    ],
+    "require": {
+        "php": ">=8.2",
+        "ext-json": "*",
+        "ext-mbstring": "*",
+        "ext-pdo": "*",
+        "ext-mysqli": "*"
+    },
+    "suggest": {
+        "ext-zip": "Backups and file manager archives",
+        "ext-intl": "Improved i18n formatting"
+    },
+    "autoload": {
+        "files": []
+    },
+    "scripts": {
+        "post-install-cmd": [
+            "@php -r \"echo 'Run /install.php — 30-day FREE demo (MySQL 2.0 included). License: info@bilohash.com'.PHP_EOL;\""
+        ]
+    },
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://composer.pkg.github.com/Ruslan-Bilohash/"
+        }
+    ]
+}

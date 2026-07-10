@@ -2,6 +2,21 @@
 
 All notable changes to BILOHASH Hosting CMS.
 
+## [2.7.2] — 2026-07-10
+
+### Added
+- **GitHub Packages** — Docker image `ghcr.io/ruslan-bilohash/hosting` (PHP 8.2 + Apache)
+- **Release demo ZIP** — `hosting-cms-demo-30d-{version}.zip` (30-day MySQL demo, no secrets)
+- `composer.json` — package `bilohash/hosting-cms`
+- `.github/workflows/publish-package.yml` — auto-publish on GitHub Release
+
+### Install package
+```bash
+docker pull ghcr.io/ruslan-bilohash/hosting:v2.7.2
+docker run -p 8080:80 ghcr.io/ruslan-bilohash/hosting:v2.7.2
+# Open http://localhost:8080/install.php
+```
+
 ## [2.7.1] — 2026-07-10
 
 ### Added

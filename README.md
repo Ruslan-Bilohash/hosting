@@ -5,7 +5,8 @@
 | | |
 |---|---|
 | **Live demo** | https://bilohash.com/hosting/ |
-| **Version** | **v2.7.1** (see `includes/version.php`) |
+| **Version** | **v2.7.2** (see `includes/version.php`) |
+| **GitHub Package** | `ghcr.io/ruslan-bilohash/hosting` ([Packages](https://github.com/Ruslan-Bilohash/hosting/pkgs/container/hosting)) |
 | **License** | **30-day FREE demo** — **MySQL 2.0 included** for testing — then [info@bilohash.com](mailto:info@bilohash.com) ([LICENSE.md](LICENSE.md)) |
 | **Stack** | PHP 8.2+, **MySQL 2.0** (free 30-day test), JSON fallback, Hostinger-ready deploy |
 | **Languages** | Ukrainian, English, Norwegian (panel + public site) |
@@ -27,7 +28,18 @@ After 30 days, commercial hosting resale, white-label branding and production su
 
 ---
 
-## Quick start (local)
+## Quick start
+
+### Docker (GitHub Package)
+
+```bash
+docker pull ghcr.io/ruslan-bilohash/hosting:latest
+docker run -p 8080:80 ghcr.io/ruslan-bilohash/hosting:latest
+```
+
+Open http://localhost:8080/install.php — **30-day FREE demo** (MySQL 2.0 included).
+
+### Git clone (local PHP)
 
 ```bash
 git clone https://github.com/Ruslan-Bilohash/hosting.git
@@ -36,6 +48,10 @@ php -S localhost:8080
 ```
 
 Open http://localhost:8080/ — demo users are seeded on first visit.
+
+### Demo ZIP (GitHub Release)
+
+Download `hosting-cms-demo-30d-v2.7.2.zip` from [Releases](https://github.com/Ruslan-Bilohash/hosting/releases) — upload to your server, run `/install.php`.
 
 ### Production install
 

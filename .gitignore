@@ -47,3 +47,4 @@ _hosting-deploy.zip
 # Source screenshots (WebP gallery in docs/screenshots/)
 /screenshot/
 /scripts/node_modules/
+/dist/
