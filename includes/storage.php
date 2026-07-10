@@ -221,44 +221,56 @@ function hs_new_id(string $prefix): string
     return $prefix . '_' . bin2hex(random_bytes(8));
 }
 
-function hs_seed_demo_data(): void
+/** Sync demo/admin accounts in demo mode (JSON and MySQL storage). */
+function hs_sync_demo_users(): bool
 {
-    if (hs_is_mysql_installed()) {
-        require_once __DIR__ . '/plan-specs.php';
-        hs_seed_demo_panel_settings();
-        require_once __DIR__ . '/client-identity.php';
-        hs_client_identity_migrate_all();
-        return;
+    if (!defined('HS_DEMO_MODE') || !HS_DEMO_MODE) {
+        return false;
     }
     $existing = hs_users();
-    if ($existing !== [] && defined('HS_DEMO_MODE') && HS_DEMO_MODE) {
-        $changed = false;
-        foreach ($existing as &$u) {
-            $uname = (string) ($u['username'] ?? '');
-            if ($uname === 'demo') {
-                $u['password_hash'] = password_hash('demo', PASSWORD_DEFAULT);
-                $u['subscription_status'] = 'active';
-                $u['active'] = true;
-                $changed = true;
-            } elseif ($uname === 'admin' || $uname === 'administrator') {
-                if ($uname === 'administrator') {
-                    $u['username'] = 'admin';
-                    $u['email'] = 'admin@' . hs_default_primary_domain();
-                }
-                $u['password_hash'] = password_hash('admin', PASSWORD_DEFAULT);
-                $u['subscription_status'] = 'active';
-                $u['active'] = true;
-                $changed = true;
+    if ($existing === []) {
+        return false;
+    }
+    $changed = false;
+    foreach ($existing as &$u) {
+        $uname = (string) ($u['username'] ?? '');
+        if ($uname === 'demo') {
+            $u['password_hash'] = password_hash('demo', PASSWORD_DEFAULT);
+            $u['subscription_status'] = 'active';
+            $u['active'] = true;
+            $changed = true;
+        } elseif ($uname === 'admin' || $uname === 'administrator') {
+            if ($uname === 'administrator') {
+                $u['username'] = 'admin';
+                $u['email'] = 'admin@' . hs_default_primary_domain();
             }
+            $u['password_hash'] = password_hash('admin', PASSWORD_DEFAULT);
+            $u['subscription_status'] = 'active';
+            $u['active'] = true;
+            $changed = true;
         }
-        unset($u);
-        if ($changed) {
-            hs_save_users($existing);
-        }
+    }
+    unset($u);
+    if ($changed) {
+        hs_save_users($existing);
+    }
+    return $changed;
+}
+
+function hs_seed_demo_data(): void
+{
+    $existing = hs_users();
+    if ($existing !== []) {
+        hs_sync_demo_users();
         require_once __DIR__ . '/plan-specs.php';
         hs_seed_demo_panel_settings();
         require_once __DIR__ . '/client-identity.php';
         hs_client_identity_migrate_all();
+        if ($existing !== []) {
+            return;
+        }
+    }
+    if (hs_is_mysql_installed()) {
         return;
     }
     if ($existing !== []) {

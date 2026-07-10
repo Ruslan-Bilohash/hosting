@@ -13,12 +13,7 @@ function hs_is_platform_admin(?array $user): bool
         return false;
     }
     $uname = (string) ($user['username'] ?? '');
-    foreach (hs_admin_accounts() as $acc) {
-        if ($uname === ($acc['user'] ?? '')) {
-            return true;
-        }
-    }
-    return false;
+    return in_array($uname, hs_platform_admin_usernames(), true);
 }
 
 function hs_impersonation_active(): bool

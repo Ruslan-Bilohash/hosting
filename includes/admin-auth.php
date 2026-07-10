@@ -23,6 +23,23 @@ function hs_admin_accounts(): array
     ];
 }
 
+/** Usernames that may open Clients / impersonation in the client panel */
+function hs_platform_admin_usernames(): array
+{
+    $names = [];
+    foreach (hs_admin_accounts() as $acc) {
+        $u = (string) ($acc['user'] ?? '');
+        if ($u !== '') {
+            $names[] = $u;
+        }
+    }
+    // Legacy production accounts (pre-v2.5 rename)
+    if (!in_array('administrator', $names, true)) {
+        $names[] = 'administrator';
+    }
+    return $names;
+}
+
 function hs_admin_logged(): bool
 {
     hs_session_start();
