@@ -5,8 +5,10 @@ require_once __DIR__ . '/init.php';
 require_once __DIR__ . '/includes/i18n.php';
 require_once __DIR__ . '/includes/client-auth.php';
 require_once __DIR__ . '/includes/plans.php';
+require_once __DIR__ . '/includes/order-types.php';
 require_once __DIR__ . '/includes/domain-store.php';
 require_once __DIR__ . '/includes/countries.php';
+require_once __DIR__ . '/includes/legal.php';
 
 hs_seed_demo_data();
 
@@ -53,20 +55,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'domain_wish' => $_POST['domain_wish'] ?? '',
             'consent_terms' => !empty($_POST['consent_terms']),
             'consent_privacy' => !empty($_POST['consent_privacy']),
+            'consent_domains' => !empty($_POST['consent_domains']),
+            'consent_digital' => !empty($_POST['consent_digital']),
+            'consent_age' => !empty($_POST['consent_age']),
             'consent_marketing' => !empty($_POST['consent_marketing']),
         ]);
         if ($res['ok']) {
-            hs_redirect('checkout.php');
+            hs_redirect(hs_panel_path('activate.php'));
         }
         $error = $t['register_error_' . ($res['error'] ?? 'save_failed')] ?? ($res['error'] ?? '');
         $startStep = 6;
     }
 }
 
-$plans = hs_plans();
+// Public hosting tariffs only — never show free/domain_only pseudo-plans.
+$plans = function_exists('hs_plans_for_register') ? hs_plans_for_register() : hs_plan_catalog_public_plans('hosting');
 $defaultPlan = (string) ($_GET['plan'] ?? $_POST['plan'] ?? 'starter');
-if (!hs_plan_id_valid($defaultPlan)) {
-    $defaultPlan = 'starter';
+if ($defaultPlan === 'domain' || $defaultPlan === 'free' || !isset($plans[$defaultPlan])) {
+    $defaultPlan = isset($plans['starter']) ? 'starter' : (string) (array_key_first($plans) ?? 'starter');
 }
 $post = $_POST;
 $isDemoPrefill = defined('HS_DEMO_MODE') && HS_DEMO_MODE && $_SERVER['REQUEST_METHOD'] !== 'POST';
@@ -93,14 +99,20 @@ $steps = [
 ];
 
 $extra_footer_scripts = ['js/register-wizard.js'];
+$body_class = 'hs-public-body hs-auth-page hs-register-page';
+$page_extra_css = ['css/auth-public.css'];
 ob_start();
 ?>
-<div class="hs-auth-wrap">
+<div class="hs-auth-wrap hs-auth-wrap--register">
   <div class="hs-auth-card hs-register-card">
-    <h1><?= hs_h($t['register_title'] ?? '') ?></h1>
-    <p class="hp-muted"><?= hs_h($t['register_intro'] ?? '') ?></p>
-    <?php if ($pendingDomain !== ''): ?><div class="hs-alert hs-alert-success"><?= hs_h($t['register_domain_selected'] ?? 'Domain') ?>: <strong><?= hs_h($pendingDomain) ?></strong></div><?php endif; ?>
-    <?php if ($error !== ''): ?><div class="hs-alert hs-alert-error"><?= hs_h($error) ?></div><?php endif; ?>
+    <h1><?= hs_h($t['register_title'] ?? 'Create hosting account') ?></h1>
+    <p class="hs-auth-card-lead"><?= hs_h($t['register_intro'] ?? '') ?></p>
+    <?php if ($pendingDomain !== ''): ?>
+      <div class="hs-alert hs-alert-success"><?= hs_h($t['register_domain_selected'] ?? 'Domain') ?>: <strong><?= hs_h($pendingDomain) ?></strong></div>
+    <?php endif; ?>
+    <?php if ($error !== ''): ?>
+      <div class="hs-alert hs-alert-error"><?= hs_h($error) ?></div>
+    <?php endif; ?>
 
     <?php
     $summaryLabels = json_encode([
@@ -290,16 +302,87 @@ ob_start();
           </div>
         </section>
 
-        <!-- Step 6: Confirm -->
+        <!-- Step 6: Confirm + legal consent (EU / Norway) -->
         <section class="hs-reg-panel" data-reg-step="6" hidden>
           <h2 class="hs-reg-panel-title"><i class="fa-solid fa-shield-halved"></i> <?= hs_h($t['register_step_confirm'] ?? 'Confirm') ?></h2>
-          <p class="hs-reg-panel-hint"><?= hs_h($t['register_step_confirm_hint'] ?? '') ?></p>
+          <p class="hs-reg-panel-hint"><?= hs_h($t['register_step_confirm_hint'] ?? $t['register_consent_intro'] ?? '') ?></p>
           <div class="hs-reg-summary" data-reg-summary aria-live="polite"></div>
-          <div class="hs-consent-banner">
-            <p><?= hs_h($t['register_consent_text'] ?? '') ?></p>
-            <label class="hs-consent-item"><input type="checkbox" name="consent_terms" value="1" required <?= !empty($post['consent_terms']) ? 'checked' : '' ?>> <?= hs_h($t['register_consent_terms'] ?? '') ?></label>
-            <label class="hs-consent-item"><input type="checkbox" name="consent_privacy" value="1" required <?= !empty($post['consent_privacy']) ? 'checked' : '' ?>> <?= hs_h($t['register_consent_privacy'] ?? '') ?></label>
-            <label class="hs-consent-item"><input type="checkbox" name="consent_marketing" value="1" <?= !empty($post['consent_marketing']) ? 'checked' : '' ?>> <?= hs_h($t['register_consent_marketing'] ?? '') ?></label>
+
+          <?php
+            $termsHref = function_exists('hs_legal_url') ? hs_legal_url('terms.php', $lang) : hs_url('terms.php');
+            $privacyHref = function_exists('hs_legal_url') ? hs_legal_url('privacy.php', $lang) : hs_url('privacy.php');
+            $cookiesHref = function_exists('hs_legal_url') ? hs_legal_url('cookies.php', $lang) : hs_url('cookies.php');
+            $domainsHref = function_exists('hs_legal_url') ? hs_legal_url('domain-registration.php', $lang) : hs_url('domain-registration.php');
+            $legalPoints = [
+                $t['register_legal_point_1'] ?? '',
+                $t['register_legal_point_2'] ?? '',
+                $t['register_legal_point_3'] ?? '',
+                $t['register_legal_point_4'] ?? '',
+                $t['register_legal_point_5'] ?? '',
+                $t['register_legal_point_6'] ?? '',
+            ];
+            $legalPoints = array_values(array_filter(array_map('strval', $legalPoints), static fn(string $s): bool => trim($s) !== ''));
+          ?>
+
+          <div class="hs-consent-banner hs-reg-consent-wrap" data-reg-consent id="hs-reg-consent">
+            <h3><i class="fa-solid fa-scale-balanced" aria-hidden="true"></i> <?= hs_h($t['register_consent_title'] ?? 'Legal agreement') ?></h3>
+            <p class="hs-consent-lead"><?= hs_h($t['register_consent_text'] ?? '') ?></p>
+
+            <div class="hs-consent-legal-box" tabindex="0">
+              <p class="hs-consent-legal-title"><?= hs_h($t['register_legal_box_title'] ?? 'Key rules under EU and Norwegian law') ?></p>
+              <?php if ($legalPoints !== []): ?>
+              <ul class="hs-consent-legal-list">
+                <?php foreach ($legalPoints as $point): ?>
+                <li><?= hs_h($point) ?></li>
+                <?php endforeach; ?>
+              </ul>
+              <?php endif; ?>
+              <p class="hs-consent-legal-links">
+                <a href="<?= hs_h($termsHref) ?>" target="_blank" rel="noopener"><?= hs_h($t['footer_terms'] ?? 'Terms') ?></a>
+                · <a href="<?= hs_h($privacyHref) ?>" target="_blank" rel="noopener"><?= hs_h($t['footer_privacy'] ?? 'Privacy') ?></a>
+                · <a href="<?= hs_h($cookiesHref) ?>" target="_blank" rel="noopener"><?= hs_h($t['footer_cookies'] ?? 'Cookies') ?></a>
+                · <a href="<?= hs_h($domainsHref) ?>" target="_blank" rel="noopener"><?= hs_h($t['footer_domains_legal'] ?? 'Domains') ?></a>
+              </p>
+            </div>
+
+            <p class="hs-consent-required-note" data-reg-consent-error hidden role="alert">
+              <?= hs_h($t['register_error_consent'] ?? 'Please accept all required agreements.') ?>
+            </p>
+
+            <label class="hs-consent-item">
+              <input type="checkbox" name="consent_terms" value="1" required data-reg-consent-required <?= !empty($post['consent_terms']) ? 'checked' : '' ?>>
+              <span class="hs-consent-label">
+                <?= hs_h($t['register_consent_terms'] ?? 'I agree to the Terms of Service *') ?>
+                <a href="<?= hs_h($termsHref) ?>" target="_blank" rel="noopener"><?= hs_h($t['footer_terms'] ?? 'Terms') ?></a>
+              </span>
+            </label>
+            <label class="hs-consent-item">
+              <input type="checkbox" name="consent_privacy" value="1" required data-reg-consent-required <?= !empty($post['consent_privacy']) ? 'checked' : '' ?>>
+              <span class="hs-consent-label">
+                <?= hs_h($t['register_consent_privacy'] ?? 'I agree to the Privacy Policy (GDPR) *') ?>
+                <a href="<?= hs_h($privacyHref) ?>" target="_blank" rel="noopener"><?= hs_h($t['footer_privacy'] ?? 'Privacy') ?></a>
+                · <a href="<?= hs_h($cookiesHref) ?>" target="_blank" rel="noopener"><?= hs_h($t['footer_cookies'] ?? 'Cookies') ?></a>
+              </span>
+            </label>
+            <label class="hs-consent-item">
+              <input type="checkbox" name="consent_domains" value="1" required data-reg-consent-required <?= !empty($post['consent_domains']) ? 'checked' : '' ?>>
+              <span class="hs-consent-label">
+                <?= hs_h($t['register_consent_domains'] ?? 'I agree to the Domain Registration Policy (Namecheap / ICANN) *') ?>
+                <a href="<?= hs_h($domainsHref) ?>" target="_blank" rel="noopener"><?= hs_h($t['footer_domains_legal'] ?? 'Domains') ?></a>
+              </span>
+            </label>
+            <label class="hs-consent-item">
+              <input type="checkbox" name="consent_digital" value="1" required data-reg-consent-required <?= !empty($post['consent_digital']) ? 'checked' : '' ?>>
+              <span class="hs-consent-label"><?= hs_h($t['register_consent_digital'] ?? 'I request immediate start of digital services and understand the 14-day withdrawal right may be lost once delivery begins (EU / Norwegian consumer law) *') ?></span>
+            </label>
+            <label class="hs-consent-item">
+              <input type="checkbox" name="consent_age" value="1" required data-reg-consent-required <?= !empty($post['consent_age']) ? 'checked' : '' ?>>
+              <span class="hs-consent-label"><?= hs_h($t['register_consent_age'] ?? 'I confirm I am at least 18 years old (or have parental consent where allowed) *') ?></span>
+            </label>
+            <label class="hs-consent-item hs-consent-item--optional">
+              <input type="checkbox" name="consent_marketing" value="1" <?= !empty($post['consent_marketing']) ? 'checked' : '' ?>>
+              <span class="hs-consent-label"><?= hs_h($t['register_consent_marketing'] ?? 'Send me news and offers by email (optional)') ?></span>
+            </label>
           </div>
         </section>
 
@@ -311,7 +394,7 @@ ob_start();
             <?= hs_h($t['register_btn_next'] ?? 'Next') ?> <i class="fa-solid fa-arrow-right"></i>
           </button>
           <button type="submit" class="hs-btn hs-btn-primary hs-register-submit" data-reg-submit hidden>
-            <i class="fa-solid fa-check"></i> <?= hs_h($t['register_consent_btn'] ?? 'I agree — create account') ?>
+            <i class="fa-solid fa-user-plus"></i> <?= hs_h($t['register_submit'] ?? $t['register_consent_btn'] ?? 'Create account') ?>
           </button>
         </div>
       </form>

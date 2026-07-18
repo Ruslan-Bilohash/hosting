@@ -98,60 +98,149 @@ function hs_perf_clear_cache(array $user): array
     return ['ok' => true, 'cleared' => $cleared];
 }
 
-/** @return list<string> Ordered probe URLs when the client leaves the field empty */
+/**
+ * Domains the client may test (active first).
+ *
+ * @return list<string>
+ */
+function hs_perf_client_domains(array $user): array
+{
+    require_once __DIR__ . '/user-settings.php';
+    require_once __DIR__ . '/panel-domains.php';
+    $settings = hs_user_settings_get((string) ($user['id'] ?? ''));
+    $out = [];
+    $active = function_exists('hs_active_domain')
+        ? strtolower(trim(hs_active_domain($settings)))
+        : strtolower(trim((string) ($settings['active_domain'] ?? '')));
+    if ($active !== '' && str_contains($active, '.')) {
+        $out[] = $active;
+    }
+    if (function_exists('hs_user_domain_choices')) {
+        foreach (hs_user_domain_choices($settings) as $d) {
+            $d = strtolower(trim((string) $d));
+            if ($d !== '' && str_contains($d, '.')) {
+                $out[] = $d;
+            }
+        }
+    }
+    foreach (['primary_domain', 'platform_free_host'] as $k) {
+        $d = strtolower(trim((string) ($settings[$k] ?? '')));
+        if ($d !== '' && str_contains($d, '.')) {
+            $out[] = $d;
+        }
+    }
+
+    return array_values(array_unique($out));
+}
+
+/** Best public URL for the currently selected domain / account site. */
+function hs_perf_selected_domain_url(array $user, array $sites = []): string
+{
+    global $site_url;
+    require_once __DIR__ . '/user-settings.php';
+    require_once __DIR__ . '/panel-domains.php';
+    require_once __DIR__ . '/installer.php';
+    $settings = hs_user_settings_get((string) ($user['id'] ?? ''));
+    $active = function_exists('hs_active_domain')
+        ? strtolower(trim(hs_active_domain($settings)))
+        : strtolower(trim((string) ($settings['active_domain'] ?? '')));
+    if ($active === '') {
+        $active = strtolower(trim((string) ($settings['primary_domain'] ?? '')));
+    }
+    if ($active === '') {
+        $active = strtolower(trim((string) ($settings['platform_free_host'] ?? '')));
+    }
+    $isBrand = function_exists('hs_domain_is_host_brand') && $active !== '' && hs_domain_is_host_brand($active);
+    if ($active !== '' && str_contains($active, '.') && !$isBrand) {
+        return 'https://' . preg_replace('#^https?://#i', '', $active) . '/';
+    }
+    // Site record URL if any
+    if ($sites !== [] && function_exists('hs_public_url_for_site')) {
+        $first = $sites[0];
+        if (is_array($first)) {
+            $u = hs_public_url_for_site($user, $first);
+            if ($u !== '') {
+                return $u;
+            }
+        }
+    }
+    $username = preg_replace('/[^a-z0-9_-]/i', '', (string) ($user['username'] ?? 'user')) ?: 'user';
+
+    // Clean rewrite path: /{username}/ (not /public_html/…)
+    return rtrim((string) $site_url, '/') . '/' . $username . '/';
+}
+
+/** @return list<string> Ordered probe URLs (selected domain first) */
 function hs_perf_speed_test_urls(array $user, array $sites): array
 {
     global $site_url;
+    require_once __DIR__ . '/installer.php';
     $username = preg_replace('/[^a-z0-9_-]/i', '', (string) ($user['username'] ?? 'user')) ?: 'user';
-    $base = rtrim((string) $site_url, '/') . '/' . HS_PUBLIC_HTML . '/' . $username;
     $urls = [];
 
-    $rootIndex = hs_public_path($username . '/index.html');
-    if (is_file($rootIndex)) {
-        $urls[] = $base . '/index.html';
+    // 1) Selected / active domain — highest priority
+    $selected = hs_perf_selected_domain_url($user, $sites);
+    if ($selected !== '') {
+        $urls[] = $selected;
+        // Also try without trailing path variants
+        $urls[] = rtrim($selected, '/') . '/index.php';
+        $urls[] = rtrim($selected, '/') . '/index.html';
+    }
+    foreach (hs_perf_client_domains($user) as $dom) {
+        $urls[] = 'https://' . $dom . '/';
+        $urls[] = 'https://www.' . $dom . '/';
     }
 
-    $welcomeIndex = hs_public_path($username . '/welcome/index.html');
-    if (is_file($welcomeIndex)) {
-        $urls[] = $base . '/welcome/index.html';
-        $urls[] = $base . '/welcome/';
-    } elseif (is_dir(hs_public_path($username . '/welcome'))) {
-        $urls[] = $base . '/welcome/';
-    }
+    // 2) Account root (rewrite + nested public_html path)
+    $urls[] = rtrim((string) $site_url, '/') . '/' . $username . '/';
+    $urls[] = rtrim((string) $site_url, '/') . '/' . HS_PUBLIC_HTML . '/' . $username . '/';
 
-    if ($sites !== []) {
+    // 3) Installed sites
+    if ($sites !== [] && function_exists('hs_public_url_for_site')) {
         foreach ($sites as $site) {
-            $slug = (string) ($site['slug'] ?? '');
-            $siteUrl = hs_public_url($username, $slug, (string) ($site['install_base'] ?? ''));
-            if (hs_perf_url_local_file($siteUrl) !== null) {
-                if ($slug === 'www' || ($site['app'] ?? '') === 'landing') {
-                    array_unshift($urls, $siteUrl);
-                } else {
-                    $urls[] = $siteUrl;
-                }
+            if (!is_array($site)) {
+                continue;
+            }
+            $siteUrl = hs_public_url_for_site($user, $site);
+            if ($siteUrl !== '') {
+                $urls[] = $siteUrl;
+            }
+            $rel = function_exists('hs_install_path_rel') ? hs_install_path_rel($user, $site) : '';
+            if ($rel !== '') {
+                $urls[] = rtrim((string) $site_url, '/') . '/' . $rel . '/';
+                $urls[] = rtrim((string) $site_url, '/') . '/' . HS_PUBLIC_HTML . '/' . $rel . '/';
             }
         }
     }
 
-    $urls[] = $base . '/';
-    $urls[] = hs_public_url($username, 'welcome', $username);
+    $welcome = hs_public_path($username . '/welcome');
+    if (is_dir($welcome)) {
+        $urls[] = rtrim((string) $site_url, '/') . '/' . $username . '/welcome/';
+        $urls[] = rtrim((string) $site_url, '/') . '/' . HS_PUBLIC_HTML . '/' . $username . '/welcome/';
+    }
 
     $seen = [];
     $out = [];
     foreach ($urls as $u) {
-        $u = trim($u);
+        $u = trim((string) $u);
         if ($u === '' || isset($seen[$u])) {
             continue;
         }
         $seen[$u] = true;
         $out[] = $u;
     }
+
     return $out;
 }
 
 function hs_perf_primary_site_url(array $user, array $sites): ?string
 {
+    $selected = hs_perf_selected_domain_url($user, $sites);
+    if ($selected !== '') {
+        return $selected;
+    }
     $urls = hs_perf_speed_test_urls($user, $sites);
+
     return $urls[0] ?? null;
 }
 
@@ -159,33 +248,104 @@ function hs_perf_primary_site_url(array $user, array $sites): ?string
 function hs_perf_url_local_file(string $url): ?string
 {
     global $site_url;
+    require_once __DIR__ . '/user-settings.php';
+    require_once __DIR__ . '/panel-domains.php';
+    require_once __DIR__ . '/domain-workspace.php';
+
     $path = (string) parse_url($url, PHP_URL_PATH);
-    $panelPath = (string) parse_url((string) $site_url, PHP_URL_PATH);
-    $prefix = rtrim($panelPath, '/') . '/' . HS_PUBLIC_HTML . '/';
-    if ($path === '' || !str_starts_with($path, $prefix)) {
+    $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+    $panelPath = rtrim((string) parse_url((string) $site_url, PHP_URL_PATH), '/');
+    $panelHost = strtolower((string) parse_url((string) $site_url, PHP_URL_HOST));
+
+    $tryRel = static function (string $rel): ?string {
+        $rel = trim(str_replace('\\', '/', $rel), '/');
+        if ($rel === '' || str_contains($rel, '..')) {
+            return null;
+        }
+        $local = hs_public_path($rel);
+        if (is_file($local)) {
+            return $local;
+        }
+        if (is_dir($local)) {
+            foreach (['index.php', 'index.html', 'index.htm'] as $idx) {
+                $candidate = $local . '/' . $idx;
+                if (is_file($candidate)) {
+                    return $candidate;
+                }
+            }
+        }
+
         return null;
+    };
+
+    // /public_html/{user}/…
+    $prefixNested = ($panelPath !== '' ? $panelPath : '') . '/' . HS_PUBLIC_HTML . '/';
+    $prefixNested = preg_replace('#/+#', '/', $prefixNested) ?? $prefixNested;
+    if ($path !== '' && str_starts_with($path, $prefixNested)) {
+        $hit = $tryRel(substr($path, strlen($prefixNested)));
+        if ($hit !== null) {
+            return $hit;
+        }
     }
-    $rel = trim(substr($path, strlen($prefix)), '/');
-    if ($rel === '' || str_contains($rel, '..')) {
-        return null;
-    }
-    $parts = explode('/', $rel, 2);
-    $ownerFolder = $parts[0] ?? '';
-    if ($ownerFolder === '' || !preg_match('/^[a-z0-9_-]+$/i', $ownerFolder)) {
-        return null;
-    }
-    $local = hs_public_path($rel);
-    if (is_file($local)) {
-        return $local;
-    }
-    if (is_dir($local)) {
-        foreach (['index.html', 'index.php', 'index.htm'] as $idx) {
-            $candidate = $local . '/' . $idx;
-            if (is_file($candidate)) {
-                return $candidate;
+
+    // /{user}/… (rewrite)
+    if ($path !== '' && ($host === $panelHost || $host === '')) {
+        $p = ltrim($path, '/');
+        if ($panelPath !== '' && str_starts_with('/' . $p, $panelPath . '/')) {
+            $p = ltrim(substr('/' . $p, strlen($panelPath)), '/');
+        }
+        if ($p !== '' && !str_starts_with($p, HS_PUBLIC_HTML . '/')) {
+            $hit = $tryRel($p);
+            if ($hit !== null) {
+                return $hit;
             }
         }
     }
+
+    // Custom domain → docroot via domain_roots
+    if ($host !== '' && $host !== $panelHost) {
+        // Need user context — scan users is heavy; resolve via path only if we have session user later.
+        // Callers with user use hs_perf_url_local_file_for_user when available.
+    }
+
+    return null;
+}
+
+/** Local file for URL using client domain map (active domain / roots). */
+function hs_perf_url_local_file_for_user(array $user, string $url): ?string
+{
+    $hit = hs_perf_url_local_file($url);
+    if ($hit !== null) {
+        return $hit;
+    }
+    require_once __DIR__ . '/user-settings.php';
+    require_once __DIR__ . '/domain-workspace.php';
+    require_once __DIR__ . '/panel-domains.php';
+    $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+    if ($host === '' || str_starts_with($host, 'www.')) {
+        $hostBare = preg_replace('#^www\.#', '', $host) ?? $host;
+    } else {
+        $hostBare = $host;
+    }
+    $settings = hs_user_settings_get((string) ($user['id'] ?? ''));
+    $domains = hs_perf_client_domains($user);
+    foreach ($domains as $d) {
+        if ($host === $d || $host === 'www.' . $d || $hostBare === $d) {
+            $rel = hs_domain_docroot_rel($user, $d, $settings);
+            $local = hs_public_path($rel);
+            if (is_dir($local)) {
+                foreach (['index.php', 'index.html', 'index.htm'] as $idx) {
+                    if (is_file($local . '/' . $idx)) {
+                        return $local . '/' . $idx;
+                    }
+                }
+            }
+            if (is_file($local)) {
+                return $local;
+            }
+        }
+    }
+
     return null;
 }
 
@@ -227,43 +387,58 @@ function hs_perf_resolve_test_url(array $user, array $sites, string $requested =
     if ($requested === '') {
         return hs_perf_primary_site_url($user, $sites);
     }
+    // Allow bare domain: booking.online → https://booking.online/
+    if (!preg_match('#^https?://#i', $requested) && preg_match('/^[a-z0-9][a-z0-9.-]+\.[a-z]{2,}$/i', $requested)) {
+        $requested = 'https://' . strtolower($requested) . '/';
+    }
     if (!filter_var($requested, FILTER_VALIDATE_URL)) {
         return null;
     }
     $host = strtolower((string) parse_url($requested, PHP_URL_HOST));
-    $allowedHosts = [];
+    $hostBare = preg_replace('#^www\.#', '', $host) ?? $host;
     global $site_url;
     $panelHost = strtolower((string) parse_url((string) $site_url, PHP_URL_HOST));
+    $username = preg_replace('/[^a-z0-9_-]/i', '', (string) ($user['username'] ?? '')) ?: '';
+
+    $allowedHosts = [];
     if ($panelHost !== '') {
         $allowedHosts[] = $panelHost;
     }
-    $settings = hs_user_settings_get((string) ($user['id'] ?? ''));
-    foreach (['primary_domain', 'active_domain'] as $k) {
-        $d = strtolower(trim((string) ($settings[$k] ?? '')));
-        if ($d !== '') {
-            $allowedHosts[] = $d;
-            $allowedHosts[] = 'www.' . $d;
-        }
+    foreach (hs_perf_client_domains($user) as $d) {
+        $allowedHosts[] = $d;
+        $allowedHosts[] = 'www.' . $d;
     }
-    $username = preg_replace('/[^a-z0-9_-]/i', '', (string) ($user['username'] ?? ''));
-    if ($panelHost !== '' && $username !== '') {
-        $allowedHosts[] = $panelHost;
+    $allowedHosts = array_values(array_unique(array_filter($allowedHosts)));
+
+    // Own custom domain
+    if (in_array($host, $allowedHosts, true) || in_array($hostBare, $allowedHosts, true)) {
+        return $requested;
     }
-    if ($panelHost !== '' && $host === $panelHost) {
+
+    // Panel host: only paths under this client's folder
+    if ($panelHost !== '' && $host === $panelHost && $username !== '') {
         $path = (string) parse_url($requested, PHP_URL_PATH);
         $panelPath = rtrim((string) parse_url((string) $site_url, PHP_URL_PATH), '/');
-        $prefix = $panelPath . '/' . HS_PUBLIC_HTML . '/' . $username;
-        if ($username === '' || !str_starts_with($path, $prefix)) {
-            return null;
+        $pathNorm = $path;
+        if ($panelPath !== '' && str_starts_with($pathNorm, $panelPath)) {
+            $pathNorm = substr($pathNorm, strlen($panelPath)) ?: '/';
         }
-        $rel = trim(substr($path, strlen($prefix)), '/');
-        if ($rel !== '' && !hs_user_owns_public_rel($user, $username . '/' . $rel)) {
-            return null;
+        $pathNorm = '/' . ltrim($pathNorm, '/');
+        // /public_html/{user}/… or /{user}/…
+        $okPrefixes = [
+            '/' . HS_PUBLIC_HTML . '/' . $username,
+            '/' . $username,
+        ];
+        foreach ($okPrefixes as $pref) {
+            if ($pathNorm === $pref || $pathNorm === $pref . '/' || str_starts_with($pathNorm, $pref . '/')) {
+                return $requested;
+            }
         }
-    } elseif (!in_array($host, array_unique($allowedHosts), true)) {
+
         return null;
     }
-    return $requested;
+
+    return null;
 }
 
 /** @return array{ok:bool,ttfb:float,total:float,size:int,code:int,url:string,dns_ms:float,connect_ms:float,download_ms:float,http_version:string,compression:string,error?:string} */
@@ -598,17 +773,40 @@ function hs_perf_render_speed_tab(array $ctx): string
     $s = $ctx['hs_user_settings'];
     $user = $ctx['user'];
     $sites = $ctx['hs_sites'];
-    $defaultUrl = hs_perf_primary_site_url($user, $sites) ?? '';
+    $defaultUrl = hs_perf_primary_site_url($user, is_array($sites) ? $sites : []) ?? '';
     $report = is_array($s['speed_report'] ?? null) ? $s['speed_report'] : [];
     $testedAt = (string) ($s['speed_tested_at'] ?? '');
     $apiUrl = hs_url(hs_panel_path('performance-speed-api.php'));
     $csrf = hs_csrf_token();
 
+    // Prefer currently selected domain over a stale last-test URL for another host
+    $inputUrl = $defaultUrl;
+    $reportUrl = trim((string) ($report['url'] ?? ''));
+    if ($reportUrl !== '' && $defaultUrl !== '') {
+        $repHost = strtolower((string) parse_url($reportUrl, PHP_URL_HOST));
+        $defHost = strtolower((string) parse_url($defaultUrl, PHP_URL_HOST));
+        $repBare = preg_replace('#^www\.#', '', $repHost) ?? $repHost;
+        $defBare = preg_replace('#^www\.#', '', $defHost) ?? $defHost;
+        if ($repBare === $defBare || $repHost === $defHost) {
+            $inputUrl = $reportUrl;
+        }
+    } elseif ($reportUrl !== '' && $defaultUrl === '') {
+        $inputUrl = $reportUrl;
+    }
+
+    $domainChoices = hs_perf_client_domains($user);
+    $activeLabel = '';
+    if ($defaultUrl !== '') {
+        $activeLabel = (string) parse_url($defaultUrl, PHP_URL_HOST);
+    }
+
     $initial = [
-        'url' => (string) ($report['url'] ?? $defaultUrl),
+        'url' => $inputUrl,
         'tested_at' => $testedAt,
         'report' => $report,
         'default_url' => $defaultUrl,
+        'domains' => $domainChoices,
+        'active_domain' => $activeLabel,
     ];
 
     $i18n = [
@@ -659,13 +857,27 @@ function hs_perf_render_speed_tab(array $ctx): string
         . '<div class="hs-speed-hero-inner">'
         . '<h2 class="hs-speed-hero-title"><i class="fa-solid fa-gauge-high"></i> ' . hs_h($t['tab_perf_speed'] ?? 'Website speed') . '</h2>'
         . '<p class="hs-speed-hero-sub">' . hs_h($t['perf_speed_lab_sub'] ?? 'Real HTTP probe from our server — TTFB, load time, compression & mobile score.') . '</p>'
+        . ($activeLabel !== ''
+            ? '<p class="hp-muted hs-speed-active-domain" style="margin:0 0 .75rem"><i class="fa-solid fa-globe"></i> '
+                . hs_h($t['perf_speed_active_domain'] ?? 'Selected domain') . ': <strong>' . hs_h($activeLabel) . '</strong></p>'
+            : '')
         . '<div class="hs-speed-url-row">'
         . '<label class="hs-speed-url-label" for="hs-speed-url">' . hs_h($t['perf_probe_url'] ?? 'URL') . '</label>'
         . '<div class="hs-speed-url-input">'
         . '<i class="fa-solid fa-link"></i>'
-        . '<input type="url" id="hs-speed-url" value="' . hs_h((string) (($report['url'] ?? '') !== '' ? $report['url'] : $defaultUrl)) . '" placeholder="https://">'
+        . '<input type="url" id="hs-speed-url" value="' . hs_h($inputUrl) . '" placeholder="https://">'
         . '<button type="button" class="hs-btn hs-btn-primary" data-hs-speed-run><i class="fa-solid fa-play"></i> ' . hs_h($t['perf_run_test'] ?? 'Run') . '</button>'
         . '</div></div>'
+        . ($domainChoices !== []
+            ? '<div class="hs-speed-domain-picks" style="display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.65rem">'
+                . implode('', array_map(static function (string $d) use ($defaultUrl): string {
+                    $href = 'https://' . $d . '/';
+                    $active = str_contains(strtolower($defaultUrl), strtolower($d));
+                    return '<button type="button" class="hs-btn hs-btn-ghost hp-dash-btn-sm' . ($active ? ' is-active' : '') . '" data-hs-speed-pick="'
+                        . hs_h($href) . '"><i class="fa-solid fa-globe"></i> ' . hs_h($d) . '</button>';
+                }, $domainChoices))
+                . '</div>'
+            : '')
         . '<div class="hs-speed-steps" data-hs-speed-steps hidden>'
         . '<div class="hs-speed-step" data-step="dns"><span class="hs-speed-step-dot"></span>' . hs_h($i18n['step_dns']) . '</div>'
         . '<div class="hs-speed-step" data-step="connect"><span class="hs-speed-step-dot"></span>' . hs_h($i18n['step_connect']) . '</div>'

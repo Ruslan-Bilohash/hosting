@@ -25,13 +25,19 @@ $panel_databases_mode = !empty($GLOBALS['panel_databases_mode']);
 $user = is_array($user ?? null) ? $user : [];
 $hs_user_settings = is_array($hs_user_settings ?? null) ? $hs_user_settings : hs_user_settings_defaults();
 $hs_is_platform_admin = $hs_is_platform_admin ?? hs_is_platform_admin($user);
-$nav_groups = hs_panel_nav_groups_for_admin($t, $hs_is_platform_admin && !hs_impersonation_active());
+$nav_groups = hs_panel_nav_groups_for_user($t, $user, $hs_is_platform_admin && !hs_impersonation_active());
+if (!function_exists('hs_panel_gate_or_null')) {
+    require_once __DIR__ . '/panel-access.php';
+}
+$hs_panel_gate_html = $hs_panel_gate_html ?? hs_panel_gate_or_null($user, $t, (string) $panel_active);
 $search_items = hs_panel_search_items($t);
 $hs_active_domain = $hs_active_domain ?? hs_active_domain($hs_user_settings);
 $hs_domain_choices = $hs_domain_choices ?? hs_user_domain_choices($hs_user_settings);
 $nav_open_slug = hs_panel_nav_open_slug($panel_active);
 $lang_meta = hs_langs()[$lang] ?? hs_langs()['en'];
 $client_label = hs_client_display_name($user);
+$hs_hosting_active = function_exists('hs_user_hosting_active') ? hs_user_hosting_active($user) : hs_client_subscription_is_active($user);
+$hs_subscription_pending = function_exists('hs_user_subscription_pending') && hs_user_subscription_pending($user);
 ?>
 <!DOCTYPE html>
 <html lang="<?= hs_h($lang_meta['html'] ?? 'en') ?>">
@@ -41,6 +47,14 @@ $client_label = hs_client_display_name($user);
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#059669">
 <title><?= hs_h($page_title) ?> — <?= hs_h($t['brand'] ?? '') ?></title>
+<?php
+if (is_file(__DIR__ . '/brand-mark.php')) {
+    require_once __DIR__ . '/brand-mark.php';
+}
+if (function_exists('hs_render_favicon_links')) {
+    echo hs_render_favicon_links();
+}
+?>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous">
 <link rel="stylesheet" href="<?= hs_h(hs_asset('css/app.css')) ?>">
@@ -48,7 +62,7 @@ $client_label = hs_client_display_name($user);
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" crossorigin="anonymous">
 <?php endif; ?>
 </head>
-<body class="hs-panel hp-panel<?= $panel_fm_mode ? ' hs-fm-page' : '' ?><?= $panel_support_mode ? ' hs-support-page' : '' ?><?= $panel_landing_focus ? ' hs-landing-focus-page' : '' ?>" data-hp-acc-open="<?= hs_h($nav_open_slug) ?>">
+<body class="hs-panel hp-panel<?= $panel_fm_mode ? ' hs-fm-page' : '' ?><?= $panel_support_mode ? ' hs-support-page' : '' ?><?= $panel_landing_focus ? ' hs-landing-focus-page' : '' ?><?= $hs_subscription_pending ? ' is-pending-account' : '' ?>" data-hp-acc-open="<?= hs_h($nav_open_slug) ?>">
 <?php if (hs_impersonation_active()): ?>
 <div class="hp-impersonate-bar">
   <span><i class="fa-solid fa-user-secret"></i> <?= hs_h(str_replace(['{admin}', '{client}'], [hs_impersonator_label(), $client_label], $t['impersonate_banner'] ?? '')) ?></span>
@@ -60,8 +74,8 @@ $client_label = hs_client_display_name($user);
 <?php if (!$panel_landing_focus): ?>
 <aside class="hs-sidebar hp-sidebar" data-hs-sidebar>
   <a href="<?= hs_h(hs_url(hs_panel_path(''))) ?>" class="hp-sidebar-brand">
-    <span class="hp-sidebar-brand-mark"><i class="fa-solid fa-server"></i></span>
-    <?= hs_h($t['brand'] ?? 'Hosting CMS') ?>
+    <span class="hp-sidebar-brand-mark hs-logo-sun" aria-hidden="true"><i class="fa-solid fa-sun"></i></span>
+    <?= hs_h($t['brand'] ?? 'SolaSkinner') ?>
   </a>
 
   <div class="hp-domain-drop" data-hp-domain>
@@ -81,6 +95,16 @@ $client_label = hs_client_display_name($user);
   </div>
 
   <nav class="hp-nav hp-nav-accordion" data-hp-accordion>
+    <?php if ($hs_subscription_pending): ?>
+    <ul class="hs-nav-list hp-nav-standalone">
+      <li>
+        <a href="<?= hs_h(hs_url(hs_panel_path('activate.php'))) ?>" class="<?= ($panel_active === 'activate') ? 'active' : '' ?>">
+          <i class="fa-solid fa-credit-card"></i>
+          <?= hs_h($t['panel_activate_nav'] ?? $t['panel_activate_pay_btn'] ?? 'Pay & activate') ?>
+        </a>
+      </li>
+    </ul>
+    <?php endif; ?>
     <?php foreach ($nav_groups as $gi => $group): ?>
       <?php if (($group['type'] ?? '') === 'item'): ?>
         <ul class="hs-nav-list hp-nav-standalone">
@@ -157,10 +181,14 @@ $client_label = hs_client_display_name($user);
   </header>
   <?php endif; ?>
   <main class="hs-content hp-content<?= $panel_landing_focus ? ' hp-content-elb' : '' ?>">
-    <?php if (empty($panel_hide_tip)): ?>
+    <?php if (empty($panel_hide_tip) && empty($hs_panel_gate_html)): ?>
       <?= hs_render_tip($panel_tip_key, $t) ?>
     <?php endif; ?>
-    <?= $content ?? '' ?>
+    <?php if (!empty($hs_panel_gate_html)): ?>
+      <?= $hs_panel_gate_html ?>
+    <?php else: ?>
+      <?= $content ?? '' ?>
+    <?php endif; ?>
   </main>
 </div>
 <script>window.HP_SEARCH_ITEMS = <?= json_encode($search_items, JSON_UNESCAPED_UNICODE) ?>;</script>
@@ -210,6 +238,9 @@ $client_label = hs_client_display_name($user);
 <?php endif; ?>
 <?php if ($panel_databases_mode): ?>
 <script src="<?= hs_h(hs_asset('js/panel-databases.js')) ?>" defer></script>
+<?php endif; ?>
+<?php if (!empty($GLOBALS['panel_order_picker_mode'])): ?>
+<script src="<?= hs_h(hs_asset('js/panel-activate-order.js')) ?>" defer></script>
 <?php endif; ?>
 <script src="<?= hs_h(hs_asset('js/app.js')) ?>" defer></script>
 </body>

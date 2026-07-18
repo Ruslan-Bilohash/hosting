@@ -142,6 +142,52 @@ function hs_admin_require(): void
     }
 }
 
+/**
+ * Allow either super-admin session or a shared secret query/body token.
+ * Used by cron URLs and admin tool one-shot diagnostics.
+ *
+ * @param list<string> $tokenConstants define() names to accept (first non-empty wins as expected value)
+ */
+function hs_admin_or_token_allow(array $tokenConstants = [], array $extraSecrets = []): bool
+{
+    if (hs_admin_logged()) {
+        return true;
+    }
+    $provided = trim((string) ($_GET['token'] ?? $_POST['token'] ?? ''));
+    if ($provided === '') {
+        return false;
+    }
+    foreach ($tokenConstants as $name) {
+        if (!is_string($name) || $name === '' || !defined($name)) {
+            continue;
+        }
+        $expected = (string) constant($name);
+        if ($expected !== '' && hash_equals($expected, $provided)) {
+            return true;
+        }
+    }
+    foreach ($extraSecrets as $secret) {
+        $secret = (string) $secret;
+        if ($secret !== '' && hash_equals($secret, $provided)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/** Exit 403 unless admin session or matching secret token. */
+function hs_admin_or_token_require(array $tokenConstants = [], array $extraSecrets = []): void
+{
+    if (hs_admin_or_token_allow($tokenConstants, $extraSecrets)) {
+        return;
+    }
+    http_response_code(403);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "Forbidden — admin login or ?token= required\n";
+    exit;
+}
+
 function hs_admin_url(string $path = '', array $qs = []): string
 {
     return hs_url('admin/' . ltrim($path, '/'), $qs);

@@ -6,6 +6,9 @@ $app = 'booking';
 $title = 'Booking';
 $color = '#0ea5e9';
 $demo = '{{DEMO_URL}}';
+if ($demo === '{{DEMO_URL}}' || trim((string) $demo) === '') {
+    $demo = 'https://bilohash.com/booking/site/';
+}
 $year = '{{YEAR}}';
 ?><!DOCTYPE html>
 <html lang="en">

@@ -1,6 +1,14 @@
 <?php
 declare(strict_types=1);
 
+// hs_resource_usage() lives in user-settings.php and needs plan helpers.
+if (!function_exists('hs_resource_usage') && is_file(__DIR__ . '/user-settings.php')) {
+    require_once __DIR__ . '/user-settings.php';
+}
+if (!function_exists('hs_plan') && is_file(__DIR__ . '/plans.php')) {
+    require_once __DIR__ . '/plans.php';
+}
+
 /** @return array{disk_mb:float,inodes:int,cpu:float,memory_mb:int,bandwidth_gb:float,sites:int} */
 function hs_usage_snapshot(array $user, array $sites): array
 {

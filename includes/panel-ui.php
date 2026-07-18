@@ -42,13 +42,49 @@ function hs_render_kv_table(array $rows): string
     return $html . '</tbody></table>';
 }
 
+function hs_user_subscription_pending(?array $user): bool
+{
+    return is_array($user) && (string) ($user['subscription_status'] ?? 'active') === 'pending';
+}
+
+function hs_panel_site_url_cell(string $domain, bool $withWww, bool $pending, array $t): string
+{
+    $host = $withWww ? 'www.' . $domain : $domain;
+    $url = 'https://' . $host;
+    if ($pending) {
+        return '<span class="hs-site-url-pending"><code>' . hs_h($url) . '</code>'
+            . '<span class="hs-site-pending-note">' . hs_h($t['site_url_after_pay'] ?? 'Available after payment') . '</span></span>';
+    }
+    return '<a href="' . hs_h($url) . '" target="_blank" rel="noopener">' . hs_h($url) . '</a>';
+}
+
+function hs_panel_site_status_badge(?array $user, array $t): string
+{
+    if (!hs_user_subscription_pending($user)) {
+        return '<span class="hs-site-status hs-site-status-active"><i class="fa-solid fa-circle-check"></i> '
+            . hs_h($t['site_status_active'] ?? 'Active') . '</span>';
+    }
+    return '<span class="hs-site-status hs-site-status-pending"><i class="fa-solid fa-hourglass-half"></i> '
+        . hs_h($t['site_status_pending'] ?? 'Not active — awaiting payment') . '</span>';
+}
+
 /** @return list<array{0:string,1:string}> */
 function hs_panel_site_details_rows(string $domain, ?array $user, array $t): array
 {
     $srv = hs_server_constants($user);
+    $pending = hs_user_subscription_pending($user);
+    $statusCell = hs_panel_site_status_badge($user, $t);
+    if ($pending) {
+        $statusCell .= '<p class="hs-site-pending-lead">' . hs_h($t['site_status_pending_hint'] ?? 'Complete payment to activate hosting tools.') . '</p>';
+    }
     return [
-        [$t['plan_site_url'] ?? '', '<a href="https://' . hs_h($domain) . '" target="_blank" rel="noopener">https://' . hs_h($domain) . '</a>'],
-        [$t['plan_site_www'] ?? '', '<a href="https://www.' . hs_h($domain) . '" target="_blank" rel="noopener">https://www.' . hs_h($domain) . '</a>'],
+        [$t['plan_site_status'] ?? 'Status', $statusCell],
+        [$t['plan_site_url'] ?? '', $pending
+            ? hs_panel_site_url_cell($domain, false, true, $t)
+            : '<a href="https://' . hs_h($domain) . '" target="_blank" rel="noopener">https://' . hs_h($domain) . '</a>'],
+        [$t['plan_site_www'] ?? '', $pending
+            ? hs_panel_site_url_cell($domain, true, true, $t)
+            : '<a href="https://www.' . hs_h($domain) . '" target="_blank" rel="noopener">https://www.' . hs_h($domain) . '</a>'],
         [$t['plan_site_ip'] ?? '', '<code>' . hs_h($srv['ip']) . '</code>'],
     ];
 }

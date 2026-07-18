@@ -124,10 +124,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 hs_user_domain_registry_sync($userId, $hs_user_settings);
                 $hs_user_settings = hs_user_settings_get($userId);
                 $hs_domain_choices = hs_user_domain_choices($hs_user_settings);
+                require_once dirname(__DIR__) . '/includes/domain-workspace.php';
+                hs_domain_auto_bind_site($user, $extra, false);
                 $success = $t['btn_add_domain'] ?? 'Added';
                 hs_panel_log($userId, 'extra_domain_add', $extra);
             } else {
                 $error = 'Invalid or duplicate domain';
+            }
+        } elseif (isset($_POST['save_domain_folder'])) {
+            require_once dirname(__DIR__) . '/includes/domain-workspace.php';
+            $dom = strtolower(trim((string) ($_POST['domain'] ?? '')));
+            $folder = trim((string) ($_POST['domain_folder'] ?? ''));
+            $res = hs_domain_assign_folder($user, $dom, $folder);
+            if (!empty($res['ok'])) {
+                $hs_user_settings = hs_user_settings_get($userId);
+                $success = str_replace(
+                    ['{domain}', '{folder}'],
+                    [$dom, 'public_html/' . (string) ($res['rel'] ?? '') . '/'],
+                    $t['dom_folder_saved'] ?? 'Domain {domain} → folder {folder}'
+                );
+                hs_panel_log($userId, 'domain_folder', $dom . ' → ' . ($res['rel'] ?? ''));
+            } else {
+                $error = match ($res['error'] ?? '') {
+                    'forbidden' => $t['dom_folder_forbidden'] ?? 'Folder must be under your account.',
+                    'domain' => $t['dom_folder_bad_domain'] ?? 'Invalid domain.',
+                    default => $t['dom_folder_save_fail'] ?? 'Could not save domain folder.',
+                };
             }
         } elseif (isset($_POST['add_redirect'])) {
             $res = hs_panel_handle_post('domains', $userId, $user, $t);
@@ -216,6 +238,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     default => $t['dom_register_error_invalid'] ?? 'Could not submit order',
                 };
             }
+        } elseif (isset($_POST['save_registrant'])) {
+            require_once dirname(__DIR__) . '/includes/panel-registrant.php';
+            $res = hs_panel_registrant_save_from_post($user, $_POST);
+            if (!empty($res['ok'])) {
+                $user = hs_user_by_id($userId) ?? $user;
+                $hs_user_settings = hs_user_settings_get($userId);
+                $success = $t['dom_registrant_saved'] ?? 'Domain owner contacts saved';
+                hs_panel_log($userId, 'registrant_save', (string) ($user['email'] ?? ''));
+            } else {
+                $error = match ($res['error'] ?? '') {
+                    'incomplete' => $t['dom_registrant_required'] ?? 'Fill in all required contact fields',
+                    'country' => $t['register_error_invalid_country'] ?? 'Invalid country',
+                    default => $t['dom_registrant_save_fail'] ?? 'Could not save contacts',
+                };
+            }
         }
         $handled = true;
     }
@@ -286,6 +323,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && !empty($userId)) {
 if ($hs_section === 'security' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     require_once dirname(__DIR__) . '/includes/security-panel.php';
     hs_sec_sync_htaccess($user, $hs_user_settings);
+}
+
+// Flash messages after PRG (delete / install)
+if ($success === '' && $error === '') {
+    if (isset($_GET['deleted'])) {
+        $success = (string) ($t['site_deleted'] ?? 'Website deleted.');
+    } elseif (isset($_GET['installed'])) {
+        $pathHint = trim((string) ($_GET['path'] ?? ''));
+        $success = (string) ($t['installer_success'] ?? 'Installed');
+        if ($pathHint !== '') {
+            $success .= ' → ' . $pathHint;
+        }
+    }
+}
+// Always reload sites after websites actions (avoid stale empty list)
+if ($hs_section === 'websites') {
+    $hs_sites = hs_sites_for_user($userId);
 }
 
 $ctx = [

@@ -1,7 +1,7 @@
 # Hosting CMS — version & status
 
-**Current:** v2.5.1 (2026-07-10)  
-**URL:** https://bilohash.com/hosting/  
+**Current:** v2.9.55 (2026-07-18) — public test release  
+**URL:** https://solaskinner.com/  
 **GitHub:** https://github.com/Ruslan-Bilohash/hosting
 
 ## Done (v2.4 → v2.5)

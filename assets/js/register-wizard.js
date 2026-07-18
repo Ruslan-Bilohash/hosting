@@ -135,6 +135,20 @@
     });
   }
 
+  function consentOk() {
+    var boxes = form.querySelectorAll('[data-reg-consent-required]');
+    if (!boxes.length) return true;
+    var all = true;
+    boxes.forEach(function (cb) {
+      if (!cb.checked) all = false;
+    });
+    var wrap = root.querySelector('[data-reg-consent]');
+    var err = root.querySelector('[data-reg-consent-error]');
+    if (wrap) wrap.classList.toggle('has-error', !all);
+    if (err) err.hidden = all;
+    return all;
+  }
+
   function validateStep(step) {
     var panel = root.querySelector('[data-reg-step="' + step + '"]');
     if (!panel) return true;
@@ -149,6 +163,9 @@
         }
         return;
       }
+      if (el.type === 'checkbox' && el.hasAttribute('data-reg-consent-required')) {
+        return; // handled by consentOk
+      }
       if (el.hasAttribute('required') && !el.checkValidity()) {
         invalid = el;
       }
@@ -159,9 +176,14 @@
     if (step === 1 && !form.querySelector('input[name="plan"]:checked')) {
       invalid = form.querySelector('input[name="plan"]');
     }
+    if (step === total && !consentOk()) {
+      invalid = form.querySelector('[data-reg-consent-required]:not(:checked)') || form.querySelector('[data-reg-consent-required]');
+    }
     if (invalid) {
-      invalid.reportValidity();
-      invalid.focus();
+      if (typeof invalid.reportValidity === 'function') {
+        try { invalid.reportValidity(); } catch (e) { /* ignore */ }
+      }
+      if (typeof invalid.focus === 'function') invalid.focus();
       panel.classList.add('hs-reg-shake');
       setTimeout(function () { panel.classList.remove('hs-reg-shake'); }, 400);
       return false;
@@ -228,6 +250,12 @@
       }
     }
     setTypeBlocks();
+  });
+
+  form.querySelectorAll('[data-reg-consent-required]').forEach(function (cb) {
+    cb.addEventListener('change', function () {
+      if (current === total) consentOk();
+    });
   });
 
   setTypeBlocks();

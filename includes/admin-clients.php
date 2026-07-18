@@ -87,9 +87,9 @@ function hs_admin_client_row_data(array $user): array
 function hs_admin_client_status_label(array $t, string $status): string
 {
     return match ($status) {
-        'active' => (string) ($t['plan_status_active'] ?? 'Active'),
-        'pending' => (string) ($t['plan_status_pending'] ?? 'Pending'),
-        'suspended' => (string) ($t['plan_status_suspended'] ?? 'Suspended'),
+        'active' => (string) ($t['admin_status_active'] ?? $t['plan_status_active'] ?? 'Active'),
+        'pending' => (string) ($t['admin_status_pending'] ?? $t['plan_status_pending'] ?? 'Pending'),
+        'suspended' => (string) ($t['admin_status_suspended'] ?? $t['plan_status_suspended'] ?? 'Suspended'),
         default => $status,
     };
 }

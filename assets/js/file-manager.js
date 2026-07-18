@@ -37,6 +37,9 @@
   function apiUrl(action, params) {
     var u = new URL(cfg.api, window.location.origin);
     u.searchParams.set('action', action);
+    if (cfg.scope) {
+      u.searchParams.set('scope', cfg.scope);
+    }
     if (params) {
       Object.keys(params).forEach(function (k) {
         if (params[k] !== undefined && params[k] !== null) u.searchParams.set(k, params[k]);
@@ -58,6 +61,9 @@
     var fd = new FormData();
     fd.append('action', action);
     fd.append('csrf', cfg.csrf);
+    if (cfg.scope) {
+      fd.append('scope', cfg.scope);
+    }
     if (data) {
       Object.keys(data).forEach(function (k) {
         fd.append(k, data[k]);
@@ -645,6 +651,9 @@
         var fd = new FormData();
         fd.append('action', 'upload');
         fd.append('csrf', cfg.csrf);
+        if (cfg.scope) {
+          fd.append('scope', cfg.scope);
+        }
         fd.append('path', state.path);
         fd.append('file', file);
         xhr.upload.onprogress = function (e) {

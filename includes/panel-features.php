@@ -311,17 +311,48 @@ function hs_panel_handle_post(string $section, string $userId, array $user, arra
             $siteId = trim((string) ($_POST['site_id'] ?? ''));
             $res = hs_delete_user_site($user, $siteId);
             if (!empty($res['ok'])) {
-                $success = $t['site_deleted'] ?? 'Website deleted';
-                $refresh = true;
-            } else {
-                $error = match ($res['error'] ?? '') {
-                    'demo' => $t['site_delete_demo'] ?? 'Demo account cannot delete websites.',
-                    'not_found' => $t['site_delete_fail'] ?? 'Could not delete website.',
-                    'protected', 'path_forbidden' => $t['site_delete_protected'] ?? 'This website cannot be deleted.',
-                    'save' => $t['site_delete_fail'] ?? 'Could not delete website.',
-                    default => $t['site_delete_fail'] ?? 'Could not delete website.',
-                };
+                // PRG — avoid “could not delete” on browser refresh / resubmit
+                hs_redirect(hs_panel_path('websites.php') . '?tab=overview&deleted=1');
             }
+            $error = match ($res['error'] ?? '') {
+                'demo' => $t['site_delete_demo'] ?? 'Demo account cannot delete websites.',
+                'not_found' => $t['site_delete_gone'] ?? ($t['site_delete_fail'] ?? 'Website already removed or not found.'),
+                'protected', 'path_forbidden' => $t['site_delete_protected'] ?? 'This website cannot be deleted.',
+                'save' => $t['site_delete_fail'] ?? 'Could not delete website.',
+                default => $t['site_delete_fail'] ?? 'Could not delete website.',
+            };
+        } elseif (isset($_POST['install_site'])) {
+            require_once __DIR__ . '/installer.php';
+            $app = (string) ($_POST['app'] ?? 'empty');
+            $defaultMode = function_exists('hs_is_ecosystem_demo_app') && hs_is_ecosystem_demo_app($app) ? 'root' : 'folder';
+            $mode = strtolower(trim((string) ($_POST['install_mode'] ?? $defaultMode))) === 'folder' ? 'folder' : 'root';
+            $slug = (string) ($_POST['slug'] ?? '');
+            if ($mode === 'root' && trim($slug) === '') {
+                $slug = $app !== '' ? $app : 'site';
+            }
+            $cleanDemo = !isset($_POST['clean_demo']) || (string) $_POST['clean_demo'] === '1';
+            $res = hs_install_site(
+                $user,
+                $slug,
+                (string) ($_POST['title'] ?? ''),
+                $app,
+                (string) ($_POST['install_base'] ?? ''),
+                $mode,
+                ['clean_demo' => $cleanDemo]
+            );
+            if (!empty($res['ok'])) {
+                $pathQ = !empty($res['path_label'])
+                    ? '&path=' . rawurlencode((string) $res['path_label'])
+                    : '';
+                hs_redirect(hs_panel_path('websites.php') . '?tab=overview&installed=1' . $pathQ);
+            }
+            $error = match ($res['error'] ?? '') {
+                'limit' => $t['installer_error_limit'] ?? 'Site limit reached — delete a website first.',
+                'slug_taken', 'path_exists' => $t['installer_error_slug'] ?? 'Path already in use — choose another folder or free the site root',
+                'package_missing' => $t['installer_error_package'] ?? 'App package is not available on this server yet.',
+                'deploy', 'mkdir' => $t['installer_error_deploy'] ?? 'Could not install application files.',
+                default => (string) ($res['error'] ?? ($t['installer_error_deploy'] ?? 'Install failed')),
+            };
         } elseif (isset($_POST['copy_site'])) {
             $srcSlug = trim((string) ($_POST['copy_from'] ?? ''));
             $newSlug = hs_slugify((string) ($_POST['copy_to'] ?? ''));

@@ -6,6 +6,9 @@ $app = 'faktura';
 $title = 'Faktura';
 $color = '#14b8a6';
 $demo = '{{DEMO_URL}}';
+if ($demo === '{{DEMO_URL}}' || trim((string) $demo) === '') {
+    $demo = 'https://bilohash.com/faktura/';
+}
 $year = '{{YEAR}}';
 ?><!DOCTYPE html>
 <html lang="en">

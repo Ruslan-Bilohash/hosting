@@ -1,12 +1,93 @@
 Options -Indexes
 DirectoryIndex index.php index.html
+ErrorDocument 404 /404.php
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+  RewriteCond %{HTTP:CF-Visitor} !"scheme":"https" [NC]
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+  RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+  RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
+</IfModule>
 <FilesMatch "^(config|init)\.php$">
   Require all denied
 </FilesMatch>
+<IfModule mod_rewrite.c>
+  RewriteRule ^(scripts|includes|data|tools)/ - [F,L]
+</IfModule>
 <IfModule mod_headers.c>
-  Header set X-Content-Type-Options "nosniff"
-  Header set X-Frame-Options "SAMEORIGIN"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+  Header always set Cross-Origin-Resource-Policy "same-origin"
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" env=HTTPS
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: https: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests" env=HTTPS
 </IfModule>
 <FilesMatch "\.(json|log)$">
   Require all denied
 </FilesMatch>
+
+# PWA / favicon
+AddType image/svg+xml .svg
+AddType image/x-icon .ico
+AddType application/manifest+json .webmanifest
+
+# Gzip/deflate — critical for ~400KB app.css (PageSpeed). Text types only.
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript
+  AddOutputFilterByType DEFLATE application/javascript application/x-javascript application/json
+  AddOutputFilterByType DEFLATE application/xml application/xhtml+xml image/svg+xml
+  BrowserMatch ^Mozilla/4 gzip-only-text/html
+  BrowserMatch ^Mozilla/4\.0[678] no-gzip
+  BrowserMatch \bMSIE !no-gzip !gzip-only-text/html
+  Header append Vary Accept-Encoding env=!dont-vary
+</IfModule>
+<IfModule mod_brotli.c>
+  AddOutputFilterByType BROTLI_COMPRESS text/html text/plain text/xml text/css text/javascript
+  AddOutputFilterByType BROTLI_COMPRESS application/javascript application/json application/xml image/svg+xml
+</IfModule>
+
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresDefault "access plus 1 week"
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType font/woff2 "access plus 1 year"
+</IfModule>
+<IfModule mod_headers.c>
+  <FilesMatch "\.(css|js|woff2?|svg|png|jpe?g|webp|ico)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteCond %{THE_REQUEST} \s/+domain\.php[\s?] [NC]
+RewriteRule ^domain\.php$ /domain [R=301,L,QSA]
+RewriteCond %{THE_REQUEST} \s/+domains\.php[\s?] [NC]
+RewriteRule ^domains\.php$ /domains [R=301,L,QSA]
+RewriteRule ^domain/?$ domain.php [L,QSA]
+RewriteRule ^domains/?$ domains.php [L,QSA]
+RewriteRule ^robots\.txt$ robots.php [L]
+RewriteRule ^sitemap\.xml$ sitemap.php [L]
+</IfModule>
+
+# BEGIN HS-ACCOUNT-PATHS
+<IfModule mod_rewrite.c>
+RewriteEngine On
+# Never rewrite public SEO landings / static media into client public_html/{user}/ trees
+RewriteRule ^seo(/|$) - [L]
+RewriteRule ^screenshot(/|$) - [L]
+RewriteCond %{REQUEST_URI} !^/public_html/
+RewriteCond %{REQUEST_URI} !^/((admin|panel|pma|assets|scripts|screenshot|docs|login|register|checkout|logout|install\.php|migrate-to-mysql\.php|config\.php|data|lang|includes|seo|domain|domains|domain-registration\.php|terms\.php|privacy\.php|cookies\.php))(/|$)
+RewriteRule ^([a-z0-9_-]+)/(.*)$ public_html/$1/$2 [L]
+</IfModule>
+# END HS-ACCOUNT-PATHS

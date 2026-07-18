@@ -6,6 +6,9 @@ $app = 'ai';
 $title = 'AI';
 $color = '#a855f7';
 $demo = '{{DEMO_URL}}';
+if ($demo === '{{DEMO_URL}}' || trim((string) $demo) === '') {
+    $demo = 'https://bilohash.com/ai/';
+}
 $year = '{{YEAR}}';
 ?><!DOCTYPE html>
 <html lang="en">

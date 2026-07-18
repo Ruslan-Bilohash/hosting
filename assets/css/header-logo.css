@@ -1,0 +1,73 @@
+/* Logo wordmark + per-language tagline (visible on mobile) */
+.hs-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+.hs-logo-text-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-width: 0;
+  line-height: 1.15;
+  gap: 0.08rem;
+}
+.hs-logo-text {
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.hs-logo-tagline {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--hs-muted, #5b6f66);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  letter-spacing: 0.01em;
+}
+
+/* Mobile: brand name was hidden — show language tagline next to sun */
+@media (max-width: 960px) {
+  .hs-logo {
+    max-width: min(58vw, 13.5rem);
+  }
+  .hs-logo-text {
+    display: none !important;
+  }
+  .hs-logo-tagline {
+    display: block !important;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--hs-text, #0f1f17);
+    line-height: 1.2;
+  }
+}
+
+@media (min-width: 961px) {
+  .hs-logo-text {
+    display: inline !important;
+  }
+  .hs-logo-tagline {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--hs-muted, #5b6f66);
+  }
+}
+
+/* Very small phones: slightly tighter tagline */
+@media (max-width: 380px) {
+  .hs-logo-tagline {
+    font-size: 0.8rem;
+  }
+  .hs-logo {
+    max-width: min(52vw, 11.5rem);
+  }
+}

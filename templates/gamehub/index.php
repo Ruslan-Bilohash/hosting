@@ -6,6 +6,9 @@ $app = 'gamehub';
 $title = 'GameHub';
 $color = '#10b981';
 $demo = '{{DEMO_URL}}';
+if ($demo === '{{DEMO_URL}}' || trim((string) $demo) === '') {
+    $demo = 'https://bilohash.com/gamehub/site/';
+}
 $year = '{{YEAR}}';
 ?><!DOCTYPE html>
 <html lang="en">

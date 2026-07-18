@@ -119,7 +119,7 @@ function hs_panel_nav_groups(array $t): array
                 foreach (hs_panel_section_tabs('websites') as $tab) {
                     $items[] = [
                         'key' => $tab['nav_key'],
-                        'url' => $tab['id'] === 'installer' ? hs_panel_path('installer.php') : hs_panel_tab_href('websites', $tab['id']),
+                        'url' => $tab['id'] === 'installer' ? hs_panel_path('apps.php') : hs_panel_tab_href('websites', $tab['id']),
                         'icon' => match ($tab['id']) {
                             'installer' => 'fa-box-open',
                             'migrate' => 'fa-truck',
@@ -225,6 +225,8 @@ function hs_panel_nav_groups(array $t): array
             'icon' => 'fa-chart-line',
             'label' => $t['nav_tools'] ?? 'Tools',
             'items' => [
+                // cPanel — only useful after payment; unpaid nav filter removes it
+                ['key' => 'cpanel', 'url' => hs_panel_path('cpanel.php'), 'icon' => 'fa-server', 'label' => $t['nav_cpanel'] ?? 'cPanel'],
                 ['key' => 'analytics', 'url' => hs_panel_path('analytics.php'), 'icon' => 'fa-chart-line', 'label' => $t['nav_analytics'] ?? 'Analytics'],
                 ['key' => 'email', 'url' => hs_panel_path('email.php'), 'icon' => 'fa-envelope', 'label' => $t['dash_manage_email'] ?? 'Email'],
                 ['key' => 'backups', 'url' => hs_panel_path('backups.php'), 'icon' => 'fa-clock-rotate-left', 'label' => $t['dash_backups'] ?? 'Backups'],
@@ -252,7 +254,7 @@ function hs_panel_nav_open_slug(string $panelActive): string
     static $map = null;
     if ($map === null) {
         $map = [
-            'dashboard' => '', 'account' => '', 'clients' => '', 'ssh' => 'advanced', 'analytics' => 'tools', 'email' => 'tools', 'backups' => 'tools',
+            'dashboard' => '', 'account' => '', 'clients' => '', 'ssh' => 'advanced', 'analytics' => 'tools', 'email' => 'tools', 'backups' => 'tools', 'cpanel' => 'tools',
             'plan' => 'plan', 'resources' => 'plan', 'plan-renew' => 'plan',
             'installer' => 'websites', 'landing-builder' => 'websites', 'php' => 'advanced', 'site-support' => '',
         ];
@@ -265,10 +267,20 @@ function hs_panel_nav_open_slug(string $panelActive): string
     return $map[$panelActive] ?? '';
 }
 
-/** @param array $t */
-function hs_panel_nav_groups_for_admin(array $t, bool $isAdmin): array
+/**
+ * Sidebar groups for the logged-in client (filters unpaid users to allowed menus).
+ *
+ * @param array $t
+ * @param array|null $user
+ */
+function hs_panel_nav_groups_for_user(array $t, ?array $user, bool $isAdmin): array
 {
+    require_once __DIR__ . '/panel-access.php';
     $groups = hs_panel_nav_groups($t);
+    // Unpaid / no active hosting: dashboard, plan, domains, account, invoices, support
+    if ($user !== null && !hs_user_hosting_active($user)) {
+        $groups = hs_panel_nav_filter_no_hosting($groups);
+    }
     if ($isAdmin) {
         $groups[] = [
             'type' => 'item',
@@ -281,4 +293,10 @@ function hs_panel_nav_groups_for_admin(array $t, bool $isAdmin): array
         ];
     }
     return $groups;
+}
+
+/** @param array $t */
+function hs_panel_nav_groups_for_admin(array $t, bool $isAdmin): array
+{
+    return hs_panel_nav_groups_for_user($t, null, $isAdmin);
 }

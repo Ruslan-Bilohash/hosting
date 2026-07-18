@@ -6,6 +6,9 @@ $app = 'freelance';
 $title = 'Freelance';
 $color = '#8b5cf6';
 $demo = '{{DEMO_URL}}';
+if ($demo === '{{DEMO_URL}}' || trim((string) $demo) === '') {
+    $demo = 'https://bilohash.com/freelance/site/';
+}
 $year = '{{YEAR}}';
 ?><!DOCTYPE html>
 <html lang="en">

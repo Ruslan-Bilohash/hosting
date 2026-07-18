@@ -6,6 +6,9 @@ $app = 'wordpress';
 $title = 'WordPress';
 $color = '#21759b';
 $demo = '{{DEMO_URL}}';
+if ($demo === '{{DEMO_URL}}' || trim((string) $demo) === '') {
+    $demo = 'https://bilohash.com/wordpress/';
+}
 $year = '{{YEAR}}';
 ?><!DOCTYPE html>
 <html lang="en">

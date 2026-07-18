@@ -184,6 +184,27 @@
 
   if (runBtn) runBtn.addEventListener('click', runTest);
 
+  // Domain chips — fill URL from selected domain
+  root.querySelectorAll('[data-hs-speed-pick]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var u = btn.getAttribute('data-hs-speed-pick') || '';
+      if (urlInput && u) {
+        urlInput.value = u;
+      }
+      root.querySelectorAll('[data-hs-speed-pick]').forEach(function (b) {
+        b.classList.toggle('is-active', b === btn);
+      });
+    });
+  });
+
+  // Ensure input shows selected domain on load
+  if (urlInput && cfg.initial && cfg.initial.default_url) {
+    var cur = (urlInput.value || '').trim();
+    if (!cur) {
+      urlInput.value = cfg.initial.default_url;
+    }
+  }
+
   if (cfg.initial && cfg.initial.report && Object.keys(cfg.initial.report).length > 0) {
     renderGauges(cfg.initial.report);
     renderMetrics(cfg.initial.report);

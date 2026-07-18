@@ -1,5 +1,7 @@
 # Secrets & production data (never commit)
 /data/*.json
+!/data/*.example.json
+!/data/countries.json
 /data/logs/
 /data/db.config.php
 /data/admin.config.php
@@ -43,6 +45,10 @@ Thumbs.db
 # Deploy temp
 _hosting-deploy.zip
 /release-payload.json
+/scripts/_*.py
+/scripts/_*.php
+/_*.php
+/public_html/_*.php
 
 # Source screenshots (WebP gallery in docs/screenshots/)
 /screenshot/

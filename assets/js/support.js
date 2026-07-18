@@ -1,16 +1,47 @@
 (function () {
   'use strict';
 
-  var root = document.getElementById('hs-support');
-  if (!root || !window.HS_SUPPORT) return;
+  // Panel client: #hs-support + HS_SUPPORT
+  // Admin inbox:  #hs-admin-support + HS_ADMIN_SUPPORT
+  var isAdmin = !!(window.HS_ADMIN_SUPPORT && document.getElementById('hs-admin-support'));
+  var root = isAdmin
+    ? document.getElementById('hs-admin-support')
+    : document.getElementById('hs-support');
+  var cfg = isAdmin ? window.HS_ADMIN_SUPPORT : window.HS_SUPPORT;
+  if (!root || !cfg) return;
 
-  var cfg = window.HS_SUPPORT;
   var MSG = cfg.i18n || {};
   var templates = cfg.templates || [];
+  var clients = Array.isArray(cfg.clients) ? cfg.clients : [];
   var threads = [];
   var activeId = '';
+  var listFilter = '';
   var mobileMq = window.matchMedia('(max-width: 960px)');
   var editors = {};
+
+  function appendCsrf(fd) {
+    if (cfg.csrf) fd.append('csrf', cfg.csrf);
+    return fd;
+  }
+
+  function showToast(text, ok) {
+    var el = q('[data-support-toast]');
+    if (!el) {
+      setStatus(q('[data-support-inbox-status]'), text, ok);
+      return;
+    }
+    el.innerHTML = '<i class="fa-solid ' + (ok ? 'fa-circle-check' : 'fa-circle-exclamation') + '"></i><span></span>';
+    var span = el.querySelector('span');
+    if (span) span.textContent = text || '';
+    el.className = 'hs-admin-support-toast' + (ok ? ' is-ok' : ' is-err');
+    el.hidden = false;
+    el.classList.remove('hidden');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function () {
+      el.hidden = true;
+      el.classList.add('hidden');
+    }, 4200);
+  }
 
   var toolbarOptions = [
     ['bold', 'italic', 'underline'],
@@ -47,13 +78,26 @@
     return tmp.innerHTML;
   }
 
+  function fallbackTa(key) {
+    var wrap = root.querySelector('[data-support-editor="' + key + '"]');
+    return wrap ? wrap.querySelector('[data-support-fallback]') : null;
+  }
+
   function mountEditors() {
-    if (typeof Quill === 'undefined') return;
     root.querySelectorAll('[data-support-editor]').forEach(function (wrap) {
       var key = wrap.getAttribute('data-support-editor');
       if (!key || editors[key]) return;
       var mount = wrap.querySelector('[data-support-quill-body]');
-      if (!mount) return;
+      var ta = wrap.querySelector('[data-support-fallback]');
+      if (typeof Quill === 'undefined' || !mount) {
+        if (mount) mount.style.display = 'none';
+        if (ta) {
+          ta.style.display = 'block';
+          ta.classList.add('is-active');
+        }
+        return;
+      }
+      if (ta) ta.style.display = 'none';
       var quill = new Quill(mount, {
         theme: 'snow',
         modules: {
@@ -81,30 +125,56 @@
 
   function editorHtml(key) {
     var q = editors[key];
-    if (!q) return '';
-    var html = q.root.innerHTML;
-    if (html === '<p><br></p>' || html === '<p></p>') return '';
-    return html;
+    if (q) {
+      var html = q.root.innerHTML;
+      if (html === '<p><br></p>' || html === '<p></p>') return '';
+      return html;
+    }
+    var ta = fallbackTa(key);
+    return ta ? String(ta.value || '') : '';
   }
 
   function editorText(key) {
     var q = editors[key];
-    if (!q) return '';
-    return (q.getText() || '').trim();
+    if (q) return (q.getText() || '').trim();
+    var ta = fallbackTa(key);
+    return ta ? String(ta.value || '').trim() : '';
   }
 
   function setEditorContent(key, content) {
     var q = editors[key];
-    if (!q) return;
-    if (looksLikeHtml(content)) {
-      q.root.innerHTML = sanitizeHtml(content);
-    } else {
-      q.setText(String(content || ''));
+    if (q) {
+      if (looksLikeHtml(content)) {
+        q.root.innerHTML = sanitizeHtml(content);
+      } else {
+        q.setText(String(content || ''));
+      }
+      return;
+    }
+    var ta = fallbackTa(key);
+    if (ta) {
+      if (looksLikeHtml(content)) {
+        var tmp = document.createElement('div');
+        tmp.innerHTML = sanitizeHtml(content);
+        ta.value = (tmp.textContent || '').trim();
+      } else {
+        ta.value = String(content || '');
+      }
     }
   }
 
   function clearEditor(key) {
     setEditorContent(key, '');
+  }
+
+  function parseJsonResponse(r) {
+    return r.text().then(function (text) {
+      try {
+        return JSON.parse(text || '{}');
+      } catch (e) {
+        return { ok: false, error: r.status === 401 || r.status === 403 ? 'auth' : ('HTTP ' + r.status) };
+      }
+    });
   }
 
   function renderBodyHtml(body) {
@@ -131,6 +201,8 @@
     setThreadOpen(false);
     activeId = '';
     setElHidden(q('[data-support-detail]'), true);
+    var compose = q('[data-support-compose]');
+    if (compose) setElHidden(compose, true);
     var empty = q('[data-support-detail-empty]');
     if (empty) setElHidden(empty, isMobileView());
     renderList();
@@ -284,7 +356,7 @@
       sendBtn.disabled = true;
       fetch(cfg.apiOwner, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         credentials: 'same-origin',
         body: JSON.stringify({
           subject: subject.trim(),
@@ -295,7 +367,7 @@
           lang: cfg.lang,
         }),
       })
-        .then(function (r) { return r.json(); })
+        .then(parseJsonResponse)
         .then(function (data) {
           if (!data.ok) throw new Error(data.error || MSG.sent_error);
           setStatus(q('[data-support-new-status]'), MSG.sent_ok, true);
@@ -343,10 +415,113 @@
     wrap.scrollTop = wrap.scrollHeight;
   }
 
+  function hideCompose() {
+    var compose = q('[data-support-compose]');
+    if (compose) setElHidden(compose, true);
+  }
+
+  function showCompose() {
+    hideDetail();
+    var compose = q('[data-support-compose]');
+    var empty = q('[data-support-detail-empty]');
+    if (empty) setElHidden(empty, true);
+    if (compose) setElHidden(compose, false);
+    setThreadOpen(true);
+    clearEditor('compose');
+    var subj = q('[data-support-compose-subject]');
+    var email = q('[data-support-compose-email]');
+    if (subj) subj.value = '';
+    if (email) email.value = '';
+    var val = q('[data-client-picker-value]');
+    var input = q('[data-client-picker-input]');
+    var selected = q('[data-client-picker-selected]');
+    if (val) val.value = '';
+    if (input) input.value = '';
+    if (selected) {
+      selected.innerHTML = '';
+      setElHidden(selected, true);
+    }
+  }
+
+  function hideDetail() {
+    var detail = q('[data-support-detail]');
+    if (detail) setElHidden(detail, true);
+  }
+
+  function renderThreadActions(thread) {
+    var wrap = q('[data-support-thread-actions]');
+    if (!wrap || !isAdmin) return;
+    wrap.innerHTML = ''
+      + '<button type="button" class="hs-btn hs-btn-ghost hp-dash-btn-sm" data-support-mark-read>'
+      + '<i class="fa-solid fa-envelope-open"></i> ' + esc(MSG.mark_read || 'Mark read') + '</button>'
+      + '<button type="button" class="hs-btn hs-btn-ghost hp-dash-btn-sm" data-support-archive>'
+      + '<i class="fa-solid fa-box-archive"></i> ' + esc(MSG.archive || 'Archive') + '</button>';
+    var markBtn = wrap.querySelector('[data-support-mark-read]');
+    var archBtn = wrap.querySelector('[data-support-archive]');
+    if (markBtn) {
+      markBtn.addEventListener('click', function () {
+        postAdminAction('mark_read', thread && thread.id);
+      });
+    }
+    if (archBtn) {
+      archBtn.addEventListener('click', function () {
+        postAdminAction('archive', thread && thread.id);
+      });
+    }
+  }
+
+  function renderClientMeta(thread) {
+    var wrap = q('[data-support-client-meta]');
+    if (!wrap || !isAdmin) return;
+    if (!thread) {
+      wrap.innerHTML = '';
+      setElHidden(wrap, true);
+      return;
+    }
+    var parts = [];
+    if (thread.client_name || thread.from_name) {
+      parts.push('<span><i class="fa-solid fa-user"></i> ' + esc(thread.client_name || thread.from_name) + '</span>');
+    }
+    if (thread.client_email || thread.from_email) {
+      parts.push('<span><i class="fa-solid fa-envelope"></i> ' + esc(thread.client_email || thread.from_email) + '</span>');
+    }
+    if (thread.username) {
+      parts.push('<span><code>@' + esc(thread.username) + '</code></span>');
+    }
+    if (thread.category) {
+      parts.push('<span class="hs-admin-support-cat">' + esc(thread.category) + '</span>');
+    }
+    wrap.innerHTML = parts.join('');
+    setElHidden(wrap, parts.length === 0);
+  }
+
+  function postAdminAction(action, messageId) {
+    if (!messageId || !cfg.apiMessages) return;
+    var fd = appendCsrf(new FormData());
+    fd.append(action, '1');
+    fd.append('message_id', messageId);
+    fetch(cfg.apiMessages, { method: 'POST', body: fd, credentials: 'same-origin' })
+      .then(parseJsonResponse)
+      .then(function (data) {
+        if (!data.ok) throw new Error(data.error || MSG.inbox_error);
+        showToast(action === 'archive' ? (MSG.archive_ok || 'Archived') : (MSG.mark_read_ok || 'Marked read'), true);
+        if (action === 'archive') {
+          closeThreadView();
+          loadInbox();
+        } else {
+          loadInbox(messageId);
+        }
+      })
+      .catch(function (err) {
+        showToast(err.message || MSG.inbox_error, false);
+      });
+  }
+
   function openThread(id) {
     activeId = id;
+    hideCompose();
     fetch(cfg.apiMessages + '?id=' + encodeURIComponent(id), { credentials: 'same-origin' })
-      .then(function (r) { return r.json(); })
+      .then(function (r) { return parseJsonResponse(r); })
       .then(function (data) {
         if (!data.ok || !data.thread) return;
         var detail = q('[data-support-detail]');
@@ -355,6 +530,8 @@
         if (detail) setElHidden(detail, false);
         var subjEl = q('[data-support-detail-subject]');
         if (subjEl) subjEl.textContent = data.thread.subject || '';
+        renderClientMeta(data.thread);
+        renderThreadActions(data.thread);
         renderThread(data.thread);
         renderList();
         setThreadOpen(true);
@@ -365,20 +542,41 @@
       });
   }
 
+  function filteredThreads() {
+    if (!listFilter) return threads;
+    var f = listFilter.toLowerCase();
+    return threads.filter(function (th) {
+      var hay = [
+        th.subject, th.preview, th.client_name, th.from_name, th.client_email,
+        th.from_email, th.username, th.category, th.id
+      ].join(' ').toLowerCase();
+      return hay.indexOf(f) >= 0;
+    });
+  }
+
   function renderList() {
     var list = q('[data-support-list]');
     var empty = q('[data-support-list-empty]');
     if (!list) return;
-    if (threads.length === 0) {
+    var rows = filteredThreads();
+    if (rows.length === 0) {
       list.innerHTML = '';
       if (empty) setElHidden(empty, false);
       return;
     }
     if (empty) setElHidden(empty, true);
-    list.innerHTML = threads.map(function (th) {
-      var unread = th.client_unread ? '<span class="hs-support-item-badge">' + esc(MSG.inbox_unread || 'New') + '</span>' : '';
-      return '<button type="button" class="hs-support-item' + (th.id === activeId ? ' active' : '') + '" data-thread-id="' + esc(th.id) + '">'
+    list.innerHTML = rows.map(function (th) {
+      var isUnread = !!(th.client_unread || th.admin_unread);
+      var unread = isUnread ? '<span class="hs-support-item-badge">' + esc(MSG.inbox_unread || 'New') + '</span>' : '';
+      var clientLine = '';
+      if (isAdmin && (th.client_name || th.from_name || th.username || th.client_email)) {
+        clientLine = '<span class="hs-support-item-client">'
+          + esc(th.client_name || th.from_name || th.username || th.client_email || '')
+          + '</span>';
+      }
+      return '<button type="button" class="hs-support-item' + (th.id === activeId ? ' active' : '') + (isUnread ? ' is-unread' : '') + '" data-thread-id="' + esc(th.id) + '">'
         + '<span class="hs-support-item-subj">' + esc(th.subject || '') + unread + '</span>'
+        + clientLine
         + '<span class="hs-support-item-prev">' + esc(th.preview || '') + '</span></button>';
     }).join('');
     list.querySelectorAll('[data-thread-id]').forEach(function (btn) {
@@ -401,17 +599,17 @@
 
   function loadInbox(selectId) {
     setListLoading(true);
-    fetch(cfg.apiMessages, { credentials: 'same-origin' })
-      .then(function (r) {
-        if (!r.ok) {
-          return r.json().catch(function () { return { ok: false, error: 'HTTP ' + r.status }; });
-        }
-        return r.json();
-      })
+    fetch(cfg.apiMessages, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+      .then(function (r) { return parseJsonResponse(r).then(function (data) { data.__status = r.status; return data; }); })
       .then(function (data) {
         if (!data.ok) {
           var err = data.error === 'module_missing' ? (MSG.module_missing || 'Support module unavailable') : (data.error || MSG.inbox_error || 'Could not load');
+          if (data.error === 'auth' || data.__status === 401 || data.__status === 403) {
+            err = MSG.inbox_error || 'Please log in again';
+          }
           setStatus(q('[data-support-inbox-status]'), err, false);
+          threads = [];
+          renderList();
           return;
         }
         threads = data.threads || [];
@@ -444,7 +642,7 @@
         return;
       }
       var files = q('[data-support-reply-files]');
-      var fd = new FormData();
+      var fd = appendCsrf(new FormData());
       fd.append('message_id', activeId);
       fd.append('body', body);
       if (files && files.files) {
@@ -453,19 +651,177 @@
         });
       }
       fetch(cfg.apiMessages, { method: 'POST', body: fd, credentials: 'same-origin' })
-        .then(function (r) { return r.json(); })
+        .then(parseJsonResponse)
         .then(function (data) {
           if (!data.ok) throw new Error(data.error || MSG.inbox_sent_error);
-          setStatus(q('[data-support-inbox-status]'), MSG.inbox_sent_ok, true);
+          var okMsg = MSG.inbox_sent_ok || 'Reply sent.';
+          if (isAdmin && data.mail_sent === true && MSG.inbox_sent_ok_mail) {
+            okMsg = String(MSG.inbox_sent_ok_mail).replace('{from}', cfg.supportFrom || '');
+          } else if (isAdmin && data.mail_sent === false && MSG.inbox_sent_ok_nomail) {
+            okMsg = MSG.inbox_sent_ok_nomail;
+          }
+          if (isAdmin) showToast(okMsg, true);
+          else setStatus(q('[data-support-inbox-status]'), okMsg, true);
           clearEditor('reply');
           if (files) files.value = '';
           if (data.thread) renderThread(data.thread);
           loadInbox(activeId);
         })
         .catch(function (err) {
-          setStatus(q('[data-support-inbox-status]'), err.message || MSG.inbox_sent_error, false);
+          if (isAdmin) showToast(err.message || MSG.inbox_sent_error, false);
+          else setStatus(q('[data-support-inbox-status]'), err.message || MSG.inbox_sent_error, false);
         });
     });
+  }
+
+  // Admin: compose + client picker + list filter
+  if (isAdmin) {
+    root.querySelectorAll('[data-support-compose-open], [data-support-compose-open-empty]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        showCompose();
+      });
+    });
+    var composeCancel = q('[data-support-compose-cancel]');
+    if (composeCancel) {
+      composeCancel.addEventListener('click', function () {
+        hideCompose();
+        closeThreadView();
+      });
+    }
+    var listFilterEl = q('[data-support-list-filter]');
+    if (listFilterEl) {
+      listFilterEl.addEventListener('input', function () {
+        listFilter = String(listFilterEl.value || '').trim();
+        renderList();
+      });
+    }
+
+    // Client picker
+    (function initClientPicker() {
+      var box = q('[data-client-picker]');
+      if (!box) return;
+      var input = box.querySelector('[data-client-picker-input]');
+      var listEl = box.querySelector('[data-client-picker-list]');
+      var valueEl = box.querySelector('[data-client-picker-value]');
+      var selectedEl = box.querySelector('[data-client-picker-selected]');
+      var hintEl = box.querySelector('[data-client-picker-hint]');
+      var emailEl = q('[data-support-compose-email]');
+
+      function renderOptions(query) {
+        if (!listEl) return;
+        var qstr = String(query || '').toLowerCase().trim();
+        var rows = clients.filter(function (c) {
+          if (!qstr) return true;
+          return String(c.search || c.label || '').toLowerCase().indexOf(qstr) >= 0;
+        }).slice(0, 40);
+        if (rows.length === 0) {
+          listEl.innerHTML = '<li class="hs-admin-client-picker-empty">' + esc(MSG.compose_none || 'No clients match') + '</li>';
+        } else {
+          listEl.innerHTML = rows.map(function (c) {
+            return '<li class="hs-admin-client-picker-opt" role="option" tabindex="0" data-id="' + esc(c.id) + '" data-email="' + esc(c.email || '') + '" data-label="' + esc(c.label || c.name || c.username || '') + '">'
+              + '<div class="hs-admin-client-picker-opt-main"><strong>' + esc(c.name || c.username || c.email || c.id) + '</strong> '
+              + (c.username ? '<code>@' + esc(c.username) + '</code>' : '') + '</div>'
+              + '<div class="hs-admin-client-picker-opt-meta">' + esc([c.email, c.plan_label || c.plan, c.status].filter(Boolean).join(' · ')) + '</div>'
+              + '</li>';
+          }).join('');
+        }
+        setElHidden(listEl, false);
+        if (input) input.setAttribute('aria-expanded', 'true');
+        listEl.querySelectorAll('[data-id]').forEach(function (li) {
+          li.addEventListener('click', function () {
+            pickClient(li.getAttribute('data-id'), li.getAttribute('data-email'), li.getAttribute('data-label'));
+          });
+        });
+      }
+
+      function pickClient(id, email, label) {
+        if (valueEl) valueEl.value = id || '';
+        if (emailEl && email) emailEl.value = email;
+        if (input) input.value = '';
+        if (selectedEl) {
+          selectedEl.innerHTML = '<div class="hs-admin-client-chip"><i class="fa-solid fa-user-check"></i> <span>'
+            + esc(label || email || id) + '</span>'
+            + '<button type="button" class="hs-admin-client-chip-clear" data-client-picker-clear aria-label="Clear">&times;</button></div>';
+          setElHidden(selectedEl, false);
+          var clear = selectedEl.querySelector('[data-client-picker-clear]');
+          if (clear) {
+            clear.addEventListener('click', function () {
+              if (valueEl) valueEl.value = '';
+              selectedEl.innerHTML = '';
+              setElHidden(selectedEl, true);
+            });
+          }
+        }
+        if (listEl) setElHidden(listEl, true);
+        if (input) input.setAttribute('aria-expanded', 'false');
+      }
+
+      if (input) {
+        input.addEventListener('focus', function () { renderOptions(input.value); });
+        input.addEventListener('input', function () { renderOptions(input.value); });
+      }
+      document.addEventListener('click', function (ev) {
+        if (!box.contains(ev.target) && listEl) {
+          setElHidden(listEl, true);
+          if (input) input.setAttribute('aria-expanded', 'false');
+        }
+      });
+    })();
+
+    var composeForm = q('[data-support-compose-form]');
+    if (composeForm) {
+      composeForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var emailEl = q('[data-support-compose-email]');
+        var subjEl = q('[data-support-compose-subject]');
+        var userEl = q('[data-client-picker-value]');
+        var toEmail = emailEl ? String(emailEl.value || '').trim() : '';
+        var subject = subjEl ? String(subjEl.value || '').trim() : '';
+        var body = editorHtml('compose');
+        if (!toEmail || toEmail.indexOf('@') < 0) {
+          showToast(MSG.compose_need_email || 'Enter a valid recipient email.', false);
+          return;
+        }
+        if (!subject) {
+          showToast(MSG.compose_need_subject || 'Enter a subject.', false);
+          return;
+        }
+        if (!editorText('compose')) {
+          showToast(MSG.fill_required || 'Message is required.', false);
+          return;
+        }
+        var fd = appendCsrf(new FormData());
+        fd.append('compose_new', '1');
+        fd.append('to_email', toEmail);
+        fd.append('subject', subject);
+        fd.append('body', body);
+        fd.append('user_id', userEl ? String(userEl.value || '') : '');
+        var submitBtn = composeForm.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+        fetch(cfg.apiMessages, { method: 'POST', body: fd, credentials: 'same-origin' })
+          .then(parseJsonResponse)
+          .then(function (data) {
+            if (!data.ok) throw new Error(data.error || MSG.compose_error);
+            var okMsg = MSG.compose_ok || 'Message sent.';
+            if (data.mail_sent === true && MSG.compose_ok_mail) {
+              okMsg = String(MSG.compose_ok_mail)
+                .replace('{from}', cfg.supportFrom || data.from || '')
+                .replace('{to}', data.to || toEmail);
+            } else if (data.mail_sent === false && MSG.compose_ok_nomail) {
+              okMsg = MSG.compose_ok_nomail;
+            }
+            showToast(okMsg, true);
+            hideCompose();
+            loadInbox(data.id || '');
+          })
+          .catch(function (err) {
+            showToast(err.message || MSG.compose_error, false);
+          })
+          .finally(function () {
+            if (submitBtn) submitBtn.disabled = false;
+          });
+      });
+    }
   }
 
   root.querySelectorAll('[data-support-panel]').forEach(function (p) {
@@ -473,7 +829,15 @@
     setElHidden(p, !show);
   });
 
-  mountEditors();
+  function bootEditors(attempt) {
+    attempt = attempt || 0;
+    if (typeof Quill === 'undefined' && attempt < 25) {
+      setTimeout(function () { bootEditors(attempt + 1); }, 120);
+      return;
+    }
+    mountEditors();
+  }
+  bootEditors(0);
 
   loadInbox();
 })();

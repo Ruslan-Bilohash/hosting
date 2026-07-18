@@ -1,19 +1,29 @@
-# BILOHASH Hosting CMS
+# BILOHASH Hosting CMS · SolaSkinner
 
-**hPanel-grade PHP hosting control panel** — sell hosting plans, manage domains, invoices, email and install the full **BILOHASH CMS ecosystem** (15+ apps) from one panel.
+**hPanel-grade PHP hosting control panel** — sell hosting plans, manage domains, invoices, email, **WHM/cPanel auto-provision**, and install the full **CMS ecosystem** (15+ apps) from one panel.
 
 | | |
 |---|---|
-| **Live demo** | https://bilohash.com/hosting/ |
-| **Version** | **v2.7.2** (see `includes/version.php`) |
-| **GitHub Package** | `ghcr.io/ruslan-bilohash/hosting` ([Packages](https://github.com/Ruslan-Bilohash/hosting/pkgs/container/hosting)) |
-| **License** | **30-day FREE demo** — **MySQL 2.0 included** for testing — then [info@bilohash.com](mailto:info@bilohash.com) ([LICENSE.md](LICENSE.md)) |
-| **Stack** | PHP 8.2+, **MySQL 2.0** (free 30-day test), JSON fallback, Hostinger-ready deploy |
-| **Languages** | Ukrainian, English, Norwegian (panel + public site) |
-| **Webmail** | https://webmail.bilohash.com/ (IMAP/SMTP, Hostinger defaults) |
-| **News** | https://bilohash.com/news/hosting.html |
+| **Live production** | https://solaskinner.com/ |
+| **Public test release** | **v2.9.55** · [GitHub Releases](https://github.com/Ruslan-Bilohash/hosting/releases) |
+| **Version** | **v2.9.55** (`includes/version.php`) |
+| **Repo** | https://github.com/Ruslan-Bilohash/hosting |
+| **License** | **30-day FREE demo** — MySQL 2.0 included — then [info@bilohash.com](mailto:info@bilohash.com) ([LICENSE.md](LICENSE.md)) |
+| **Stack** | PHP 8.2+, MySQL 2.0 (demo), JSON fallback, Namecheap/Hostinger ready |
+| **Languages** | Ukrainian, English, Norwegian (+ more) |
+| **Release notes** | [docs/GITHUB-RELEASE-v2.9.55.md](docs/GITHUB-RELEASE-v2.9.55.md) |
 
 ![Dashboard](docs/screenshots/dashboard.webp)
+
+### What’s in v2.9.55 (public test)
+
+- Full **public homepage + design** (as on solaskinner.com)
+- **`/install.php`** installer + **30-day demo license**
+- Client **panel** (40+ tools) + platform **admin**
+- **WHM Nebula pool** — packages + createacct after payment
+- Domain search, Stripe/PayPal hooks, invoices PDF
+- Ecosystem app installer, landing builder, file manager
+- **60 screenshots** in `docs/screenshots/`
 
 ---
 
@@ -51,7 +61,7 @@ Open http://localhost:8080/ — demo users are seeded on first visit.
 
 ### Demo ZIP (GitHub Release)
 
-Download `hosting-cms-demo-30d-v2.7.2.zip` from [Releases](https://github.com/Ruslan-Bilohash/hosting/releases) — upload to your server, run `/install.php`.
+Download **v2.9.55** source ZIP from [Releases](https://github.com/Ruslan-Bilohash/hosting/releases/tag/v2.9.55) — upload to your server, run `/install.php`.
 
 ### Production install
 

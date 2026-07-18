@@ -33,9 +33,9 @@ ob_start();
     <?php if ($error !== ''): ?><div class="hs-alert hs-alert-error"><?= hs_h($error) ?></div><?php endif; ?>
     <form method="post">
       <?= hs_csrf_field() ?>
-      <div class="hs-field"><label>User</label><input name="user" required value="admin"></div>
-      <div class="hs-field"><label>Password</label><input type="password" name="password" required></div>
-      <button type="submit" class="hs-btn hs-btn-primary" style="width:100%">Login</button>
+      <div class="hs-field"><label><?= hs_h($t['admin_login_user'] ?? 'User') ?></label><input name="user" required value="admin" autocomplete="username"></div>
+      <div class="hs-field"><label><?= hs_h($t['admin_login_password'] ?? 'Password') ?></label><input type="password" name="password" required autocomplete="current-password"></div>
+      <button type="submit" class="hs-btn hs-btn-primary" style="width:100%"><?= hs_h($t['admin_login_submit'] ?? 'Login') ?></button>
     </form>
   </div>
 </div>

@@ -5,16 +5,22 @@ $load_charts = true;
 require_once dirname(__DIR__) . '/init.php';
 require_once dirname(__DIR__) . '/includes/i18n.php';
 require_once dirname(__DIR__) . '/includes/admin-auth.php';
+require_once dirname(__DIR__) . '/includes/plans.php';
 require_once dirname(__DIR__) . '/includes/user-settings.php';
 require_once dirname(__DIR__) . '/includes/resource-usage.php';
 require_once dirname(__DIR__) . '/includes/domain-store.php';
 require_once dirname(__DIR__) . '/includes/domain-orders.php';
 require_once dirname(__DIR__) . '/includes/impersonation.php';
+require_once dirname(__DIR__) . '/includes/admin-nav.php';
 
 hs_seed_demo_data();
 hs_admin_require();
 
-hs_usage_track_all_clients();
+try {
+    hs_usage_track_all_clients();
+} catch (Throwable $e) {
+    error_log('admin/index usage track: ' . $e->getMessage());
+}
 
 $users = hs_users();
 $sites = hs_sites();
@@ -92,6 +98,7 @@ $chartJson = json_encode([
 ], JSON_UNESCAPED_UNICODE);
 
 $page_title = $t['admin_title'] ?? '';
+$admin_nav_active = 'dashboard';
 ob_start();
 ?>
 <div class="hs-admin-page">
@@ -101,6 +108,20 @@ ob_start();
     <div class="hs-stat"><div class="label"><?= hs_h($t['admin_total_disk'] ?? 'Total disk') ?></div><div class="value" style="font-size:1.35rem"><?= hs_h(hs_format_disk_gb($totalDiskMb)) ?> GB</div></div>
     <div class="hs-stat"><div class="label">Version</div><div class="value" style="font-size:1.25rem"><?= hs_h(hs_version_label()) ?></div></div>
   </div>
+
+  <section class="hp-card" style="margin-bottom:1.25rem">
+    <h2 class="hp-card-title"><i class="fa-solid fa-bolt"></i> <?= hs_h($t['admin_quick_tools'] ?? 'Quick tools') ?></h2>
+    <div class="hp-card-body" style="display:flex;flex-wrap:wrap;gap:.5rem">
+      <a class="hs-btn hs-btn-primary hp-dash-btn-sm" href="<?= hs_h(hs_admin_url('tools.php')) ?>"><i class="fa-solid fa-screwdriver-wrench"></i> <?= hs_h($t['admin_tools_title'] ?? 'API & tools') ?></a>
+      <a class="hs-btn hs-btn-ghost hp-dash-btn-sm" href="<?= hs_h(hs_admin_url('invoices.php')) ?>"><i class="fa-solid fa-file-invoice-dollar"></i> <?= hs_h($t['admin_invoices_title'] ?? 'Invoices') ?></a>
+      <a class="hs-btn hs-btn-ghost hp-dash-btn-sm" href="<?= hs_h(hs_admin_url('payments.php')) ?>"><i class="fa-solid fa-credit-card"></i> <?= hs_h($t['admin_payments_title'] ?? 'Payments') ?></a>
+      <a class="hs-btn hs-btn-ghost hp-dash-btn-sm" href="<?= hs_h(hs_admin_url('namecheap.php')) ?>"><i class="fa-solid fa-globe"></i> <?= hs_h($t['admin_namecheap_title'] ?? 'Domains API') ?></a>
+      <a class="hs-btn hs-btn-ghost hp-dash-btn-sm" href="<?= hs_h(hs_admin_url('clients.php')) ?>"><i class="fa-solid fa-users"></i> <?= hs_h($t['admin_clients'] ?? 'Clients') ?></a>
+      <a class="hs-btn hs-btn-ghost hp-dash-btn-sm" href="<?= hs_h(hs_admin_url('support.php')) ?>"><i class="fa-solid fa-headset"></i> <?= hs_h($t['admin_support_title'] ?? 'Support') ?></a>
+      <a class="hs-btn hs-btn-ghost hp-dash-btn-sm" href="<?= hs_h(hs_admin_url('mysql.php')) ?>"><i class="fa-solid fa-database"></i> <?= hs_h($t['admin_mysql_title'] ?? 'MySQL') ?></a>
+      <a class="hs-btn hs-btn-ghost hp-dash-btn-sm" href="<?= hs_h(hs_admin_url('settings.php')) ?>"><i class="fa-solid fa-gear"></i> <?= hs_h($t['admin_settings_title'] ?? 'Settings') ?></a>
+    </div>
+  </section>
 
   <section class="hp-card hs-chart-card" style="margin-bottom:1.5rem">
     <h2 class="hp-card-title"><?= hs_h($t['admin_chart_all_title'] ?? 'All clients — disk usage') ?></h2>
@@ -140,7 +161,15 @@ ob_start();
   <p class="hp-muted" style="margin-bottom:1rem"><?= hs_h($t['admin_clients_impersonate_hint'] ?? '') ?></p>
   <div class="hs-table-wrap">
     <table class="hs-table">
-      <thead><tr><th>User</th><th>Email</th><th>Plan</th><th><?= hs_h($t['admin_disk'] ?? 'Disk') ?></th><th>Sites</th><th>Created</th><th></th></tr></thead>
+      <thead><tr>
+          <th><?= hs_h($t['admin_col_user'] ?? 'User') ?></th>
+          <th><?= hs_h($t['admin_col_email'] ?? 'Email') ?></th>
+          <th><?= hs_h($t['admin_col_plan'] ?? 'Plan') ?></th>
+          <th><?= hs_h($t['admin_disk'] ?? 'Disk') ?></th>
+          <th><?= hs_h($t['admin_col_sites'] ?? 'Sites') ?></th>
+          <th><?= hs_h($t['admin_col_created'] ?? 'Created') ?></th>
+          <th></th>
+        </tr></thead>
       <tbody>
       <?php foreach ($clientsData as $row):
         $u = $row['user'];
@@ -171,17 +200,10 @@ ob_start();
     </table>
   </div>
 
-  <p style="margin-top:1.5rem">
-    <a href="<?= hs_h(hs_admin_url('clients.php')) ?>" class="hs-btn hs-btn-primary"><i class="fa-solid fa-users"></i> <?= hs_h($t['admin_clients_manage'] ?? 'Manage clients') ?></a>
-    <a href="<?= hs_h(hs_admin_url('plans.php')) ?>" class="hs-btn hs-btn-primary"><i class="fa-solid fa-layer-group"></i> <?= hs_h($t['admin_plans_title'] ?? 'Plans & services') ?></a>
-    <a href="<?= hs_h(hs_url(hs_panel_path('clients.php'))) ?>" class="hs-btn hs-btn-ghost"><i class="fa-solid fa-users"></i> <?= hs_h($t['nav_clients'] ?? 'Clients') ?> (panel)</a>
-    <a href="<?= hs_h(hs_admin_url('mysql.php')) ?>" class="hs-btn hs-btn-ghost"><i class="fa-solid fa-database"></i> MySQL provisioning</a>
-  </p>
-  <p style="margin-top:2rem"><a href="<?= hs_h(hs_url('admin/logout.php')) ?>">Logout</a> · <a href="<?= hs_h(hs_url()) ?>"><?= hs_h($t['breadcrumb_home'] ?? '') ?></a></p>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
 <script>window.HS_ADMIN_USAGE_CHARTS = <?= $chartJson ?>;</script>
 <script src="<?= hs_h(hs_asset('js/resource-charts.js')) ?>"></script>
 <?php
 $content = ob_get_clean();
-require dirname(__DIR__) . '/includes/layout-public.php';
+require dirname(__DIR__) . '/includes/layout-admin.php';

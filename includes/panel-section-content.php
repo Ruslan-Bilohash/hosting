@@ -276,25 +276,74 @@ function hs_panel_security_content(string $tab, array $ctx): string
 
 function hs_panel_domain_search_card(array $t, string $lang): string
 {
+    require_once __DIR__ . '/domain-store.php';
+
+    // Modern search (same engine as /domain): accepts bare SLD or full FQDN (e.g. hosting.shop).
+    $hint = (string) ($t['dom_check_hint'] ?? $t['domain_search_page_placeholder'] ?? '');
+    if ($hint === '') {
+        $hint = 'Search by name (mybrand) or full domain (hosting.shop). Zones apply only when no TLD is typed.';
+    }
+    $body = '<div class="hs-panel-domain-search">'
+        . '<p class="hs-panel-domain-search-lead">' . hs_h($hint) . '</p>'
+        . '<div class="hs-domain-search-panel">'
+        . hs_render_domain_search_form($t, $lang, [
+            'variant' => 'panel',
+            'check_url' => hs_url('domain-check.php'),
+        ])
+        . '<div class="hs-domain-search-results-wrap" data-hs-domain-results-wrap hidden>'
+        . '<div class="hs-domain-search-results" data-hs-domain-result aria-live="polite"></div>'
+        . '</div>'
+        . '</div>'
+        . '</div>';
+
+    // Fallback legacy multi-zone form (still works if modern chips have no prices).
     $prices = hs_domain_tld_prices();
-    $defaultTlds = ['lt', 'com', 'eu', 'net'];
+    if ($prices === []) {
+        $prices = [
+            'com' => 12.99, 'eu' => 8.99, 'lt' => 12.99, 'pl' => 9.99,
+            'shop' => 1.99, 'net' => 14.99, 'org' => 12.99, 'de' => 8.99,
+        ];
+    }
+    $defaultTlds = ['com', 'shop', 'eu', 'lt', 'pl', 'net', 'org', 'de'];
     $tldHtml = '';
-    foreach ($prices as $tld => $price) {
-        $checked = in_array($tld, $defaultTlds, true) ? ' checked' : '';
+    $shown = 0;
+    foreach ($defaultTlds as $tld) {
+        if (!isset($prices[$tld])) {
+            continue;
+        }
+        $price = (float) $prices[$tld];
         $tldHtml .= '<label class="hs-dom-tld-chk">'
-            . '<input type="checkbox" name="tld[]" value="' . hs_h($tld) . '"' . $checked . ' data-hs-tld-chk>'
+            . '<input type="checkbox" name="tld[]" value="' . hs_h($tld) . '" checked data-hs-tld-chk>'
             . '<span class="hs-dom-tld-name">.' . hs_h($tld) . '</span>'
+            . '<span class="hs-dom-tld-price">' . hs_h(hs_domain_format_price($price, $lang)) . '</span>'
+            . '</label>';
+        $shown++;
+    }
+    // Also offer remaining popular zones (unchecked) so "All" still works.
+    foreach ($prices as $tld => $price) {
+        if (in_array((string) $tld, $defaultTlds, true)) {
+            continue;
+        }
+        if ($shown >= 24) {
+            break;
+        }
+        $tldHtml .= '<label class="hs-dom-tld-chk">'
+            . '<input type="checkbox" name="tld[]" value="' . hs_h((string) $tld) . '" data-hs-tld-chk>'
+            . '<span class="hs-dom-tld-name">.' . hs_h((string) $tld) . '</span>'
             . '<span class="hs-dom-tld-price">' . hs_h(hs_domain_format_price((float) $price, $lang)) . '</span>'
             . '</label>';
+        $shown++;
     }
     $checkUrl = hs_url('domain-check.php');
-    return hs_render_card(
-        $t['dom_check_title'] ?? 'Domain availability',
-        '<form class="hp-stack hs-dom-check" data-hs-panel-domain-search'
+    $legacy = '<details class="hs-dom-check-legacy" style="margin-top:1.25rem">'
+        . '<summary style="cursor:pointer;font-weight:700;color:#047857">'
+        . hs_h($t['dom_check_advanced'] ?? ($t['dom_check_tlds_label'] ?? 'Check many zones at once'))
+        . '</summary>'
+        . '<form class="hp-stack hs-dom-check" style="margin-top:.85rem" data-hs-panel-domain-search'
         . ' data-check-url="' . hs_h($checkUrl) . '"'
         . ' data-msg-available="' . hs_h($t['domain_available'] ?? 'Available') . '"'
         . ' data-msg-taken="' . hs_h($t['domain_taken'] ?? 'Taken') . '"'
-        . ' data-msg-invalid="' . hs_h($t['dom_check_invalid_sld'] ?? 'Enter a valid name (e.g. mysite)') . '"'
+        . ' data-msg-invalid="' . hs_h($t['dom_check_invalid_sld'] ?? 'Enter a valid name (e.g. mysite or hosting.shop)') . '"'
         . ' data-msg-error="' . hs_h($t['domain_lookup_error'] ?? 'Lookup failed') . '"'
         . ' data-msg-checking="' . hs_h($t['domain_checking'] ?? 'Checking…') . '"'
         . ' data-msg-cta="' . hs_h($t['domain_register_cta'] ?? 'Register') . '"'
@@ -304,8 +353,8 @@ function hs_panel_domain_search_card(array $t, string $lang): string
         . ' data-col-price="' . hs_h($t['dom_check_col_price'] ?? 'Price') . '"'
         . ' data-register-base="' . hs_h(hs_url(hs_panel_tab_href('domains', 'register'))) . '">'
         . '<div class="hs-field"><label>' . hs_h($t['dom_check_sld_label'] ?? 'Domain name') . '</label>'
-        . '<input type="text" name="sld" placeholder="' . hs_h($t['dom_check_sld_placeholder'] ?? 'mysite') . '"'
-        . ' pattern="[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?" required autocomplete="off" data-hs-domain-sld></div>'
+        . '<input type="text" name="sld" placeholder="' . hs_h($t['dom_check_sld_placeholder'] ?? 'mybrand or hosting.shop') . '"'
+        . ' required autocomplete="off" spellcheck="false" autocapitalize="none" inputmode="url" data-hs-domain-sld></div>'
         . '<div class="hs-dom-tld-section"><div class="hs-dom-tld-head">'
         . '<span>' . hs_h($t['dom_check_tlds_label'] ?? 'Zones to check') . '</span>'
         . '<label class="hs-dom-tld-all"><input type="checkbox" data-hs-tld-all checked>'
@@ -313,7 +362,11 @@ function hs_panel_domain_search_card(array $t, string $lang): string
         . '<div class="hs-dom-tld-grid">' . $tldHtml . '</div></div>'
         . '<button type="submit" class="hs-btn hs-btn-primary" data-hs-domain-btn data-label="' . hs_h($t['dom_check_btn'] ?? 'Check selected') . '">'
         . hs_h($t['dom_check_btn'] ?? 'Check selected') . '</button>'
-        . '<div data-hs-domain-results class="hs-dom-results"></div></form>'
+        . '<div data-hs-domain-results class="hs-dom-results"></div></form></details>';
+
+    return hs_render_card(
+        $t['dom_check_title'] ?? 'Domain availability',
+        $body . $legacy
     );
 }
 
@@ -328,19 +381,21 @@ function hs_panel_domain_registry_card(array $settings, array $t, string $userId
         );
     }
 
-    usort($registry, static function (array $a, array $b): int {
-        $sa = hs_domain_registry_display_status($a);
-        $sb = hs_domain_registry_display_status($b);
-        $prio = ['expired' => 0, 'expiring' => 1, 'pending_registration' => 2, 'active' => 3];
-        $pa = $prio[$sa] ?? 3;
-        $pb = $prio[$sb] ?? 3;
+    usort($registry, static function (array $a, array $b) use ($userId): int {
+        $sa = hs_domain_registry_display_status($a, $userId);
+        $sb = hs_domain_registry_display_status($b, $userId);
+        $prio = ['expired' => 0, 'expiring' => 1, 'pending_payment' => 2, 'pending_registration' => 3, 'active' => 4];
+        $pa = $prio[$sa] ?? 4;
+        $pb = $prio[$sb] ?? 4;
         if ($pa !== $pb) {
             return $pa <=> $pb;
         }
+
         return strcmp((string) ($a['domain'] ?? ''), (string) ($b['domain'] ?? ''));
     });
 
-    $hasPending = false;
+    $hasPendingReg = false;
+    $hasPendingPay = false;
     $rows = [];
     foreach ($registry as $entry) {
         if (!is_array($entry)) {
@@ -349,11 +404,15 @@ function hs_panel_domain_registry_card(array $settings, array $t, string $userId
         $dom = (string) ($entry['domain'] ?? '');
         $expires = (string) ($entry['expires_at'] ?? '');
         $role = (string) ($entry['role'] ?? 'parked');
-        $status = hs_domain_registry_display_status($entry);
+        $status = hs_domain_registry_display_status($entry, $userId);
         if ($status === 'pending_registration') {
-            $hasPending = true;
+            $hasPendingReg = true;
+        }
+        if ($status === 'pending_payment') {
+            $hasPendingPay = true;
         }
         $statusLabel = match ($status) {
+            'pending_payment' => $t['dom_registry_status_pending_payment'] ?? 'Awaiting payment',
             'pending_registration' => $t['dom_registry_status_pending'] ?? 'Awaiting registration',
             'expiring' => $t['dom_registry_status_expiring'] ?? 'Expiring soon',
             'expired' => $t['dom_registry_status_expired'] ?? 'Expired',
@@ -373,19 +432,28 @@ function hs_panel_domain_registry_card(array $settings, array $t, string $userId
         $statusCell = '<span class="hs-dom-status ' . hs_h($statusCls) . '"'
             . ($status === 'pending_registration' ? ' data-hs-dom-pending-status data-domain="' . hs_h($dom) . '"' : '')
             . '>' . hs_h($statusLabel) . '</span>';
-        $purchasedBadge = !empty($entry['purchased']) || hs_domain_entry_is_purchased($entry, $userId)
+        $purchasedBadge = hs_domain_entry_is_purchased($entry, $userId)
             ? ' <span class="hs-dom-purchased-badge" title="' . hs_h($t['dom_purchased_badge'] ?? 'Purchased') . '"><i class="fa-solid fa-cart-shopping"></i></span>'
             : '';
+        // Single Pay button comes from hs_domain_delete_action_html (pending_payment) — do not duplicate here.
+        $actions = hs_domain_delete_action_html($entry, $userId, $t);
         $rows[] = '<tr' . ($status === 'pending_registration' ? ' data-hs-dom-pending-row data-domain="' . hs_h($dom) . '"' : '') . '>'
             . '<td><code>' . hs_h($dom) . '</code>' . $purchasedBadge . '</td><td>' . hs_h($roleLabel) . '</td>'
             . '<td>' . $expiresFmt . '</td><td>' . $statusCell . '</td>'
-            . '<td class="hs-dom-actions">' . hs_domain_delete_action_html($entry, $userId, $t) . '</td></tr>';
+            . '<td class="hs-dom-actions">' . $actions . '</td></tr>';
     }
 
     $pendingHint = '';
-    if ($hasPending) {
+    if ($hasPendingPay) {
+        // Hint only — pay CTA is already in each unpaid domain row (avoid second big button).
+        $pendingHint .= '<div class="hs-alert" style="margin-bottom:1rem">'
+            . '<p style="margin:0 0 .35rem"><strong>' . hs_h($t['dom_registry_pay_title'] ?? 'Domain not paid yet') . '</strong></p>'
+            . '<p class="hp-muted" style="margin:0">' . hs_h($t['dom_registry_pay_hint'] ?? 'Use the Pay button in the Actions column for each unpaid domain. After payment we register at Namecheap and bind public_html/{user}/{domain}/.') . '</p>'
+            . '</div>';
+    }
+    if ($hasPendingReg) {
         $checkUrl = hs_url(hs_panel_path('domain-order-status-api.php'));
-        $pendingHint = '<div class="hs-dom-pending-box" data-hs-dom-pending-poll'
+        $pendingHint .= '<div class="hs-dom-pending-box" data-hs-dom-pending-poll'
             . ' data-check-url="' . hs_h($checkUrl) . '"'
             . ' data-csrf="' . hs_h(hs_csrf_token()) . '"'
             . ' data-msg-checking="' . hs_h($t['dom_registry_pending_checking'] ?? 'Checking site availability…') . '"'
@@ -470,8 +538,21 @@ function hs_panel_domains_content(string $tab, array $ctx): string
     $subdomains = is_array($settings['domains'] ?? null) ? $settings['domains'] : [];
     $alerts = hs_panel_alerts($ctx);
 
+    require_once __DIR__ . '/panel-registrant.php';
+
     return match ($tab) {
-        'subdomains' => $alerts . hs_panel_subdomains_tab($subdomains, $domain, $t),
+        'contacts' => $alerts
+            . hs_panel_registrant_form_html($user, $t, $lang)
+            . hs_render_card(
+                $t['dom_contacts_hint_title'] ?? 'How to buy a domain in the panel',
+                '<ol class="hs-fm-guide-steps" style="margin:.5rem 0 0 1.1rem">'
+                . '<li>' . hs_h($t['dom_flow_step1'] ?? 'Fill owner contacts (WHOIS) on this tab.') . '</li>'
+                . '<li>' . hs_h($t['dom_flow_step2'] ?? 'Search and select a domain on the Domains tab.') . '</li>'
+                . '<li>' . hs_h($t['dom_flow_step3'] ?? 'Pay with Stripe or PayPal — registration starts automatically.') . '</li>'
+                . '<li>' . hs_h($t['dom_flow_step4'] ?? 'After payment the domain is bound to your site folder.') . '</li>'
+                . '</ol>'
+            ),
+        'subdomains' => $alerts . hs_panel_subdomains_tab($subdomains, $domain, $t, $user),
         'parked' => $alerts . hs_render_card(
             $t['tab_dom_parked'] ?? '',
             '<p class="hp-muted">' . hs_h($t['dom_parked_hint'] ?? '') . '</p>'
@@ -493,6 +574,7 @@ function hs_panel_domains_content(string $tab, array $ctx): string
             . hs_panel_domain_registry_card($settings, $t, $userId),
         default => $alerts
             . hs_panel_domain_search_card($t, $lang)
+            . (is_array($user) && $user !== [] ? hs_panel_domain_folder_map_card($user, $settings, $t) : '')
             . hs_render_card(
                 $t['domains_primary'] ?? '',
                 '<form method="post" class="hp-stack">' . hs_csrf_field()
@@ -503,6 +585,78 @@ function hs_panel_domains_content(string $tab, array $ctx): string
             . hs_panel_domain_registry_card($settings, $t, $userId),
         'dns' => $alerts . hs_panel_dns_zone($settings, $t, $domain, $user),
     };
+}
+
+/**
+ * Per-domain folder assignment: domain → public_html/{user}/{folder}/
+ *
+ * @param array<string,mixed> $user
+ * @param array<string,mixed> $settings
+ * @param array<string,mixed> $t
+ */
+function hs_panel_domain_folder_map_card(array $user, array $settings, array $t): string
+{
+    require_once __DIR__ . '/domain-workspace.php';
+    require_once __DIR__ . '/subdomain-dns.php';
+    $userId = (string) ($user['id'] ?? '');
+    $username = hs_user_public_rel_prefix($user);
+    $domains = function_exists('hs_user_domain_choices') ? hs_user_domain_choices($settings) : [];
+    if ($domains === []) {
+        return '';
+    }
+    $roots = hs_domain_roots_map($settings);
+    $folderOpts = hs_public_html_folder_options_for_user($user, 3);
+    $action = hs_h(hs_url(hs_panel_tab_href('domains', 'overview')));
+    $rows = '';
+    foreach ($domains as $dom) {
+        $dom = strtolower(trim((string) $dom));
+        if ($dom === '' || !str_contains($dom, '.')) {
+            continue;
+        }
+        $key = $roots[$dom] ?? hs_domain_folder_name($dom);
+        $rel = hs_domain_docroot_rel($user, $dom, $settings);
+        $opts = '';
+        // Dedicated domain folder (default)
+        $domFolder = hs_domain_folder_name($dom);
+        $opts .= '<option value="' . hs_h($domFolder) . '"' . ($key === $domFolder ? ' selected' : '') . '>'
+            . 'public_html/' . hs_h($username) . '/' . hs_h($domFolder) . '/</option>';
+        // Account root
+        $opts .= '<option value="_root"' . ($key === HS_DOMAIN_ROOT_FOLDER || $key === $username ? ' selected' : '') . '>'
+            . 'public_html/' . hs_h($username) . '/ (' . hs_h($t['dom_folder_account_root'] ?? 'account root') . ')</option>';
+        foreach ($folderOpts as $fo) {
+            $path = (string) ($fo['path'] ?? '');
+            if ($path === '' || $path === $username) {
+                continue;
+            }
+            $relOpt = str_starts_with($path, $username . '/') ? substr($path, strlen($username) + 1) : $path;
+            if ($relOpt === '' || $relOpt === $domFolder) {
+                continue;
+            }
+            $opts .= '<option value="' . hs_h($relOpt) . '"' . ($key === $relOpt ? ' selected' : '') . '>'
+                . hs_h((string) ($fo['label'] ?? ('public_html/' . $path . '/'))) . '</option>';
+        }
+        $rows .= '<tr><td><code>' . hs_h($dom) . '</code></td>'
+            . '<td><form method="post" action="' . $action . '" class="hp-inline-form" style="display:flex;flex-wrap:wrap;gap:.4rem;align-items:center">'
+            . hs_csrf_field()
+            . '<input type="hidden" name="domain" value="' . hs_h($dom) . '">'
+            . '<select name="domain_folder" style="min-width:12rem">' . $opts . '</select>'
+            . '<button type="submit" name="save_domain_folder" value="1" class="hs-btn hs-btn-primary hp-dash-btn-sm">'
+            . hs_h($t['btn_save'] ?? 'Save') . '</button></form></td>'
+            . '<td><code>public_html/' . hs_h($rel) . '/</code></td></tr>';
+    }
+    if ($rows === '') {
+        return '';
+    }
+
+    return hs_render_card(
+        $t['dom_folder_map_title'] ?? 'Domain → website folder',
+        '<p class="hp-muted" style="margin-top:0">' . hs_h($t['dom_folder_map_lead'] ?? 'Each domain uses its own folder. Put index.php or index.html there — the domain serves it automatically.') . '</p>'
+        . '<div class="hs-table-wrap"><table class="hs-table"><thead><tr>'
+        . '<th>' . hs_h($t['dom_registry_col_domain'] ?? 'Domain') . '</th>'
+        . '<th>' . hs_h($t['dom_folder_col'] ?? 'Website folder') . '</th>'
+        . '<th>' . hs_h($t['dom_folder_path'] ?? 'Path') . '</th>'
+        . '</tr></thead><tbody>' . $rows . '</tbody></table></div>'
+    );
 }
 
 function hs_panel_redirects_table(array $settings): string
@@ -528,8 +682,9 @@ function hs_panel_websites_content(string $tab, array $ctx): string
     $alerts = hs_panel_alerts($ctx);
 
     return match ($tab) {
-        'installer' => $alerts . '<div class="hp-actions"><a href="' . hs_h(hs_url(hs_panel_path('installer.php'))) . '" class="hs-btn hs-btn-primary"><i class="fa-solid fa-box-open"></i> ' . hs_h($t['tab_site_installer'] ?? '') . '</a></div>'
-            . '<p class="hp-muted">' . hs_h($t['tip_installer'] ?? '') . '</p>',
+        'installer' => $alerts . '<div class="hp-actions"><a href="' . hs_h(hs_url(hs_panel_path('apps.php'))) . '" class="hs-btn hs-btn-primary"><i class="fa-solid fa-box-open"></i> ' . hs_h($t['tab_site_installer'] ?? 'App installer') . '</a></div>'
+            . '<p class="hp-muted">' . hs_h($t['tip_installer'] ?? '') . '</p>'
+            . '<p class="hp-muted" style="margin-top:.5rem">' . hs_h($t['installer_open_apps'] ?? 'Open the app installer to deploy Shop, Booking and other clean demos.') . '</p>',
         'migrate' => $alerts . hs_render_card(
             $t['tab_site_migrate'] ?? '',
             hs_panel_migrate_queue($s)
@@ -540,7 +695,7 @@ function hs_panel_websites_content(string $tab, array $ctx): string
         'copy' => $alerts . hs_panel_site_copy_tab($user, $sites, $t),
         'errors' => $alerts . hs_render_card($t['tab_site_errors'] ?? '', hs_panel_error_log($user, $s, $t)),
         default => $alerts . hs_panel_sites_table($user, $sites, $t)
-            . '<div class="hp-actions" style="margin-top:1rem"><a href="' . hs_h(hs_url(hs_panel_path('installer.php'))) . '" class="hs-btn hs-btn-primary">' . hs_h($t['tab_site_installer'] ?? '') . '</a></div>',
+            . '<div class="hp-actions" style="margin-top:1rem"><a href="' . hs_h(hs_url(hs_panel_path('apps.php'))) . '" class="hs-btn hs-btn-primary"><i class="fa-solid fa-box-open"></i> ' . hs_h($t['tab_site_installer'] ?? 'App installer') . '</a></div>',
     };
 }
 
@@ -567,7 +722,7 @@ function hs_panel_site_copy_tab(array $user, array $sites, array $t): string
     if ($sites === []) {
         $body = $guide
             . '<p class="hp-muted">' . hs_h($t['site_copy_no_sites'] ?? 'No sites yet — install one first.') . '</p>'
-            . '<div class="hp-actions"><a href="' . hs_h(hs_url(hs_panel_path('installer.php'))) . '" class="hs-btn hs-btn-primary">'
+            . '<div class="hp-actions"><a href="' . hs_h(hs_url(hs_panel_path('apps.php'))) . '" class="hs-btn hs-btn-primary">'
             . '<i class="fa-solid fa-box-open"></i> ' . hs_h($t['tab_site_installer'] ?? 'Installer') . '</a></div>';
         return hs_render_card($t['tab_site_copy'] ?? 'Copy website', $body);
     }
@@ -758,20 +913,27 @@ function hs_panel_ftp_copy_row(string $label, string $id, string $value, array $
 /** @param array<string, mixed> $ctx */
 function hs_panel_ftp_connection_data(array $ctx): array
 {
+    require_once dirname(__DIR__) . '/includes/plan-specs.php';
+    require_once dirname(__DIR__) . '/includes/client-ftp-onboard.php';
     $user = $ctx['user'];
-    $s = $ctx['hs_user_settings'];
-    $domain = hs_plan_display_domain($user, $s);
-    $srv = hs_server_constants($user);
-    $username = (string) ($user['username'] ?? 'user');
-    $ftpUser = hs_ftp_username($domain, $user);
-    $ftpPath = hs_ftp_account_path($username, $user);
+    $cred = hs_client_ftp_credentials($user);
+    $hostIp = (string) ($cred['host_ip'] ?? '');
+    $hostname = (string) ($cred['host'] ?? ('ftp.' . hs_default_primary_domain()));
+    $login = (string) ($cred['login'] ?? '');
+    $port = (string) ((int) ($cred['port'] ?? 21));
+
     return [
-        'host' => hs_ftp_display_host($srv['ip'], $user),
-        'hostname' => hs_ftp_display_host($domain, $user),
-        'port' => '21',
-        'user' => $ftpUser,
-        'path' => $ftpPath,
-        'url' => 'ftp://' . $ftpUser . '@' . $domain . '/' . $ftpPath,
+        'host' => $hostIp !== '' ? $hostIp : $hostname,
+        'hostname' => $hostname,
+        'port' => $port,
+        'user' => $login,
+        // Jailed: after login root is /
+        'path' => '/',
+        'homedir' => (string) ($cred['homedir'] ?? ''),
+        'sftp_port' => (string) ((int) ($cred['sftp_port'] ?? 22)),
+        'url' => 'ftp://' . rawurlencode($login) . '@' . $hostname . '/',
+        'ok' => !empty($cred['ok']),
+        'error' => (string) ($cred['error'] ?? ''),
     ];
 }
 
@@ -1066,25 +1228,59 @@ function hs_panel_advanced_content(string $tab, array $ctx): string
     };
 }
 
-/** @param list<array<string,mixed>> $subdomains */
-function hs_panel_subdomains_tab(array $subdomains, string $primaryDomain, array $t): string
+/**
+ * @param list<array<string,mixed>> $subdomains
+ * @param array<string,mixed> $user
+ */
+function hs_panel_subdomains_tab(array $subdomains, string $primaryDomain, array $t, array $user = []): string
 {
     require_once __DIR__ . '/subdomain-dns.php';
-    $folderOpts = '<option value="">' . hs_h($t['subdomain_folder_root'] ?? 'public_html/ (default)') . '</option>';
-    foreach (hs_public_html_folder_options() as $opt) {
-        if (($opt['path'] ?? '') === '') {
+    require_once __DIR__ . '/storage.php';
+    $username = $user !== [] ? hs_user_public_rel_prefix($user) : '';
+    $folderOpts = '';
+    $opts = $user !== []
+        ? hs_public_html_folder_options_for_user($user)
+        : [];
+    foreach ($opts as $opt) {
+        $path = (string) ($opt['path'] ?? '');
+        if ($path === '') {
             continue;
         }
-        $folderOpts .= '<option value="' . hs_h((string) $opt['path']) . '">' . hs_h((string) $opt['label']) . '</option>';
+        $folderOpts .= '<option value="' . hs_h($path) . '"'
+            . ($path === $username ? ' selected' : '') . '>'
+            . hs_h((string) ($opt['label'] ?? $path)) . '</option>';
     }
+    if ($folderOpts === '' && $username !== '') {
+        $folderOpts = '<option value="' . hs_h($username) . '">public_html/' . hs_h($username) . '/</option>';
+    }
+
+    // Never show folders outside this account (legacy bad data).
+    $safeSubs = [];
+    foreach ($subdomains as $d) {
+        if (!is_array($d)) {
+            continue;
+        }
+        $folder = hs_normalize_public_html_folder((string) ($d['folder'] ?? ''));
+        if ($user !== [] && $folder !== '' && !hs_public_html_folder_allowed_for_user($user, $folder)) {
+            continue;
+        }
+        if ($user !== [] && $folder === '') {
+            $d['folder'] = $username;
+        }
+        $safeSubs[] = $d;
+    }
+
     $rows = '';
-    if ($subdomains === []) {
+    if ($safeSubs === []) {
         $rows = '<p class="hp-muted">' . hs_h($t['subdomain_empty'] ?? $t['domains_add'] ?? '') . '</p>';
     } else {
         $trs = '';
-        foreach ($subdomains as $d) {
+        foreach ($safeSubs as $d) {
             $name = (string) ($d['name'] ?? '');
-            $folder = (string) ($d['folder'] ?? '');
+            $folder = hs_normalize_public_html_folder((string) ($d['folder'] ?? ''));
+            if ($folder === '' && $username !== '') {
+                $folder = $username;
+            }
             $folderLabel = $folder === '' ? 'public_html/' : 'public_html/' . $folder . '/';
             $fullHost = $name !== '' ? $name . '.' . $primaryDomain : '';
             $trs .= '<tr><td><code>' . hs_h($fullHost) . '</code></td>'
@@ -1097,25 +1293,55 @@ function hs_panel_subdomains_tab(array $subdomains, string $primaryDomain, array
             . '<th>' . hs_h($t['subdomain_col_created'] ?? 'Created') . '</th>'
             . '</tr></thead><tbody>' . $trs . '</tbody></table></div>';
     }
+    $lead = (string) ($t['subdomain_lead'] ?? '');
+    if ($username !== '') {
+        $scopeNote = str_replace(
+            '{folder}',
+            $username,
+            (string) ($t['subdomain_scope_note'] ?? 'Document roots are limited to public_html/{folder}/ — other accounts are hidden.')
+        );
+        $lead = trim($lead . ' ' . $scopeNote);
+    }
     $form = '<form method="post" class="hp-stack hs-subdomain-form">' . hs_csrf_field()
         . '<div class="hp-grid-2">'
         . '<div class="hs-field"><label>' . hs_h($t['subdomain_name_label'] ?? 'Subdomain') . '</label>'
         . '<div class="hs-subdomain-input"><input type="text" name="subdomain" pattern="[a-z0-9][a-z0-9-]*" placeholder="shop" required>'
         . '<span class="hs-subdomain-suffix">.' . hs_h($primaryDomain) . '</span></div></div>'
         . '<div class="hs-field"><label>' . hs_h($t['subdomain_folder_label'] ?? 'Document root') . '</label>'
-        . '<select name="subdomain_folder">' . $folderOpts . '</select>'
-        . '<p class="hs-field-hint">' . hs_h($t['subdomain_folder_hint'] ?? '') . '</p></div></div>'
+        . '<select name="subdomain_folder" required>' . $folderOpts . '</select>'
+        . '<p class="hs-field-hint">' . hs_h($t['subdomain_folder_hint'] ?? 'Only your own site folders are listed.') . '</p></div></div>'
         . '<button type="submit" name="add_subdomain" value="1" class="hs-btn hs-btn-primary">'
         . '<i class="fa-solid fa-plus"></i> ' . hs_h($t['btn_add_domain'] ?? '') . '</button></form>';
-    return hs_render_card($t['tab_dom_sub'] ?? '', '<p class="hp-muted">' . hs_h($t['subdomain_lead'] ?? '') . '</p>' . $rows, $form);
+    return hs_render_card($t['tab_dom_sub'] ?? '', '<p class="hp-muted">' . hs_h($lead) . '</p>' . $rows, $form);
 }
 
 function hs_panel_dns_zone(array $settings, array $t, string $domain, ?array $user = null): string
 {
     require_once __DIR__ . '/subdomain-dns.php';
+    require_once __DIR__ . '/domain-workspace.php';
     $dnsAction = hs_h(hs_url(hs_panel_tab_href('domains', 'dns')));
     $srv = hs_server_constants($user);
-    $zone = hs_dns_all_records($settings, $user);
+    $domain = strtolower(trim($domain));
+    // Each domain → own folder; seed index.php/html + routes
+    $bindNote = '';
+    if (is_array($user) && $user !== []) {
+        $bound = hs_domain_auto_bind_all_for_user($user, true);
+        $settings = hs_user_settings_get((string) ($user['id'] ?? ''));
+        if ($bound !== []) {
+            $lis = '';
+            foreach ($bound as $row) {
+                $lis .= '<li><code>' . hs_h((string) ($row['domain'] ?? '')) . '</code> → <code>public_html/'
+                    . hs_h((string) ($row['rel'] ?? '')) . '/</code></li>';
+            }
+            $bindNote = '<div class="hs-alert hs-alert-success" style="margin-bottom:1rem">'
+                . '<p style="margin:0 0 .5rem"><i class="fa-solid fa-link"></i> <strong>'
+                . hs_h($t['dns_sites_bound_title'] ?? 'Each domain has its own website folder') . '</strong></p>'
+                . '<p class="hp-muted" style="margin:0 0 .5rem">' . hs_h($t['dns_sites_bound_lead'] ?? 'Upload index.php or index.html into the folder — the domain serves it automatically. System DNS (A/NS) is ready.') . '</p>'
+                . '<ul style="margin:.25rem 0 0 1.1rem">' . $lis . '</ul></div>';
+        }
+        $bindNote .= hs_panel_domain_folder_map_card($user, $settings, $t);
+    }
+    $zone = hs_dns_all_records($settings, $user, $domain);
     $rows = '';
     foreach ($zone['system'] as $row) {
         $mxPri = isset($row['priority']) ? ' <span class="hp-muted">prio ' . (int) $row['priority'] . '</span>' : '';
@@ -1190,13 +1416,19 @@ function hs_panel_dns_zone(array $settings, array $t, string $domain, ?array $us
         . '<input type="number" name="dns_priority" min="0" max="100" value="10"></div></div>'
         . '<button type="submit" name="add_dns" value="1" class="hs-btn hs-btn-primary">' . hs_h($t['dns_add'] ?? 'Add DNS') . '</button></form>';
 
-    return hs_render_card(
+    $ready = '<div class="hs-alert" style="margin-bottom:1rem">'
+        . '<strong><i class="fa-solid fa-circle-check"></i> ' . hs_h($t['dns_defaults_ready'] ?? 'DNS defaults are set automatically') . '</strong>'
+        . '<p class="hp-muted" style="margin:.35rem 0 0">' . hs_h($t['dns_defaults_ready_lead'] ?? 'A (@) and www must point to the server IP. At Namecheap use BasicDNS + A records, or NS dns1/dns2.namecheaphosting.com.') . '</p>'
+        . '</div>';
+
+    return $bindNote . hs_render_card(
         $t['domains_dns_title'] ?? 'DNS zone',
-        '<p class="hp-muted">' . hs_h($t['domains_dns_hint'] ?? '') . '</p>'
+        $ready
+        . '<p class="hp-muted">' . hs_h($t['domains_dns_hint'] ?? 'System records are pre-configured. Add your own A, CNAME, TXT, MX below only if needed.') . '</p>'
         . '<div class="hs-dns-zone-meta"><span><strong>' . hs_h($domain) . '</strong></span>'
         . '<span>IP <code>' . hs_h($srv['ip']) . '</code></span>'
         . '<span>NS <code>' . hs_h($srv['ns1']) . '</code> · <code>' . hs_h($srv['ns2']) . '</code></span></div>'
-        . '<p class="hp-muted hs-dns-propagate">' . hs_h($t['dns_propagate_hint'] ?? '') . '</p>'
+        . '<p class="hp-muted hs-dns-propagate">' . hs_h($t['dns_propagate_hint'] ?? 'Changes apply on DNS servers within up to 24 hours. System records and subdomains update automatically.') . '</p>'
         . '<div class="hs-table-wrap"><table class="hs-table hs-dns-table"><thead><tr>'
         . '<th>' . hs_h($t['dns_col_type'] ?? 'Type') . '</th>'
         . '<th>' . hs_h($t['dns_col_host'] ?? 'Host') . '</th>'
@@ -1550,7 +1782,8 @@ function hs_panel_sites_table(array $user, array $sites, array $t): string
             $siteId = (string) ($site['id'] ?? '');
             if ($siteId !== '') {
                 $confirm = $t['site_delete_confirm'] ?? 'Delete this website permanently? Files will be removed.';
-                $actions .= '<form method="post" class="hs-dns-del-form" style="display:inline" onsubmit="return confirm('
+                $delAction = hs_url(hs_panel_path('websites.php'), ['tab' => 'overview']);
+                $actions .= '<form method="post" action="' . hs_h($delAction) . '" class="hs-dns-del-form" style="display:inline" onsubmit="return confirm('
                     . json_encode($confirm, JSON_UNESCAPED_UNICODE) . ')">' . hs_csrf_field()
                     . '<input type="hidden" name="site_id" value="' . hs_h($siteId) . '">'
                     . '<button type="submit" name="delete_site" value="1" class="hs-btn hs-btn-ghost hp-dash-btn-sm" title="'

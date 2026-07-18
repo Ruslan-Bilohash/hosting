@@ -1,6 +1,32 @@
 # Changelog
 
-All notable changes to BILOHASH Hosting CMS.
+All notable changes to BILOHASH Hosting CMS / SolaSkinner Hosting panel.
+
+## [2.9.55] — 2026-07-18 — Public test release
+
+### Added
+- **WHM / Nebula cPanel pool** — auto-provision client cPanels after hosting payment (`admin/cpanel-pool.php`, `includes/whm-api.php`, `includes/cpanel-provision.php`)
+- **HTTPS bridge** for Namecheap Stellar→Nebula when outbound `:2087` is blocked (`tools/sola-whm-bridge.php`)
+- Plan packages: `sola_mini`, `sola_starter`, `sola_plus`, `sola_business`, `sola_vps` with disk quotas
+- Per-client FTP jail onboarding, SFTP/secure access panel page
+- Admin debugger health report; pool limits (25 accounts / 30 GB Nebula)
+- Live production: **https://solaskinner.com/** (SolaSkinner brand)
+
+### Security
+- WHM bridge: function allowlist, IP allowlist, rate limit, secret header only
+- `.htaccess` denies `data/`, `includes/`, `scripts/`, `tools/`
+- Secrets (`data/*.json`, API tokens, `config.local.php`) never committed
+- Client packages: shell disabled by default (`hasshell: false`)
+
+### Install / demo
+- `/install.php` — 30-day FREE demo license + MySQL 2.0
+- Demo users `demo` / `demo`, admin `admin` / `admin`
+- Full frontend + panel CSS/JS as shipped on solaskinner.com
+- 60 WebP screenshots in `docs/screenshots/`
+
+### Changed
+- Version **2.9.55** (`includes/version.php`)
+- README / LICENSE updated for public test release
 
 ## [2.7.2] — 2026-07-10
 

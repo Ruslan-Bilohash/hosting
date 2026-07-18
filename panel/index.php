@@ -48,16 +48,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && hs_csrf_verify($_POST['csrf'] ?? nu
     }
 }
 
+$isPending = hs_user_subscription_pending($user);
+$isHostingActive = hs_user_hosting_active($user);
+
 ob_start();
 ?>
 <?php if ($flash !== ''): ?><div class="hs-alert hs-alert-success"><?= hs_h($flash) ?></div><?php endif; ?>
+
+<?php if ($isPending): ?>
+<div class="hs-alert hs-alert-warn hs-panel-pending-banner">
+  <span><i class="fa-solid fa-circle-exclamation"></i> <?= hs_h($t['panel_activate_banner'] ?? 'Payment required to activate hosting tools. Profile, plan and domains are still available.') ?></span>
+  <a href="<?= hs_h(hs_url(hs_panel_path('activate.php'))) ?>" class="hs-btn hs-btn-primary hp-dash-btn-sm"><i class="fa-solid fa-credit-card"></i> <?= hs_h($t['panel_activate_pay_btn'] ?? 'Pay now') ?></a>
+</div>
+<?php endif; ?>
 
 <?php if ($hs_is_platform_admin && !hs_impersonation_active()): ?>
 <?= hs_panel_admin_dashboard_block($t, $lang) ?>
 <?php endif; ?>
 
-<div class="hp-dash-wrap">
-<?= hs_render_launch_checklist($user, $hs_user_settings, $hs_sites, $t) ?>
+<div class="hp-dash-wrap<?= $isPending ? ' is-pending-account' : '' ?>">
+<?php if ($isPending): ?>
+  <?php require_once dirname(__DIR__) . '/includes/activation-checklist.php'; ?>
+  <?= hs_render_activation_checklist($user, $t) ?>
+<?php else: ?>
+  <?= hs_render_launch_checklist($user, $hs_user_settings, $hs_sites, $t) ?>
+<?php endif; ?>
 <section class="hp-dash-hero">
   <div class="hp-dash-hero-top">
     <a href="<?= hs_h(hs_url(hs_panel_path('plan.php'))) ?>" class="hs-btn hs-btn-ghost hp-dash-change-plan"><?= hs_h($t['btn_change_plan'] ?? '') ?></a>
@@ -77,6 +92,7 @@ ob_start();
 
 <?= hs_panel_site_details_card($domain, $user, $t) ?>
 
+<?php if (!$isPending): ?>
 <h2 class="hp-dash-section-title"><?= hs_h($t['dash_essentials'] ?? '') ?></h2>
 <div class="hp-dash-essentials">
   <?= hs_render_essential_tile(
@@ -171,6 +187,8 @@ ob_start();
   </section>
 </div>
 <script>window.HS_DASH_USAGE_CHART = <?= $dashChartJson ?>;</script>
+<?php endif; ?>
+</div>
 <?php
 $content = ob_get_clean();
 require dirname(__DIR__) . '/includes/layout-panel.php';

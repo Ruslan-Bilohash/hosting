@@ -113,7 +113,10 @@ function hs_plan_page_upgrade_section(array $ctx): string
     $current = (string) ($user['plan'] ?? 'starter');
     $html = '<section class="hs-plan-upgrade-section"><h2 class="hs-plan-upgrade-title">' . hs_h($t['plan_upgrade_title'] ?? 'Other plans') . '</h2>'
         . '<div class="hs-plans hs-plans-panel">';
-    foreach (hs_plans() as $pid => $plan) {
+    $upgradePlans = function_exists('hs_plans_for_register')
+        ? hs_plans_for_register()
+        : hs_plan_catalog_public_plans('hosting');
+    foreach ($upgradePlans as $pid => $plan) {
         if ($pid === $current || $pid === 'pro') {
             continue;
         }

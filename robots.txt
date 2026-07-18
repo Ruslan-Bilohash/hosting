@@ -4,3 +4,35 @@ Disallow: /panel/
 Disallow: /admin/
 Disallow: /data/
 Disallow: /public_html/
+Disallow: /pma/
+Disallow: /install.php
+Disallow: /migrate-to-mysql.php
+Disallow: /scripts/
+
+# AI / answer engines — public marketing pages allowed
+User-agent: GPTBot
+Allow: /
+Disallow: /panel/
+Disallow: /admin/
+Disallow: /data/
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+Sitemap: https://solaskinner.com/sitemap.xml
+# LLM-friendly Markdown index (not an XML sitemap): https://solaskinner.com/llms.txt

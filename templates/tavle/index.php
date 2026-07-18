@@ -6,6 +6,9 @@ $app = 'tavle';
 $title = 'Bilen CMS';
 $color = '#6366f1';
 $demo = '{{DEMO_URL}}';
+if ($demo === '{{DEMO_URL}}' || trim((string) $demo) === '') {
+    $demo = 'https://bilohash.com/tavle/site/';
+}
 $year = '{{YEAR}}';
 ?><!DOCTYPE html>
 <html lang="en">

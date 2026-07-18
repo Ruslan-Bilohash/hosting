@@ -1,44 +1,54 @@
-# BILOHASH Hosting CMS — License
+# BILOHASH / SolaSkinner Hosting CMS — License
 
-**Version:** 2.7.1  
-**Copyright © 2026 BILOHASH**
+**Version:** 2.9.55 (public test)  
+**Copyright © 2026 BILOHASH · SolaSkinner**
 
-## 30-day free demo (MySQL 2.0 included)
+## 30-day FREE demo license (evaluation)
 
-BILOHASH Hosting CMS is provided for **evaluation and demonstration** for **30 calendar days** from the date of installation (`license_started_at` + `license_demo_days=30` stored in platform meta).
+This software is licensed for **evaluation and demonstration only** for **30 calendar days** from installation.
 
-During the demo period you may **use everything for free**, including:
+On first install (`/install.php`) the platform stores:
 
-- **MySQL 2.0** — full schema: users, sites, settings, invoices, domain/hosting orders, activity logs, plans catalog
-- **JSON → MySQL migration** via `/migrate-to-mysql.php` (one-time import for upgrades)
-- Install and run the full hPanel-style panel on your own server
-- All client and platform admin features (40+ tools)
-- Install ecosystem apps (Shop, Booking, Faktura, etc.) into client `public_html`
-- Self-host and test white-label / hosting resale scenarios
+- `license_started_at` — install timestamp (UTC)
+- `license_demo_days` = **30**
 
-This is intended for **testing and evaluation** — not unlimited production use without a license after 30 days.
+### What you may do during the 30 days (FREE)
 
-## After the demo period
+- Install and run the **full panel** on your own server or local machine
+- Use **MySQL 2.0** (users, sites, invoices, orders, activity logs, plans)
+- **JSON → MySQL** migration (`/migrate-to-mysql.php`)
+- All client tools (files, domains, SSL, backups, WordPress, etc.)
+- Platform admin + super-admin (`/admin/`)
+- Ecosystem app installer (Shop, Booking, Faktura, …)
+- WHM / cPanel pool automation (self-configured API)
+- White-label testing and multi-language UI (uk / en / no / …)
+- Share feedback for the **public test release**
 
-Commercial use, production hosting resale, white-label branding, and priority support require a **commercial license** from BILOHASH.
+### What you may NOT do
 
-**Contact:** [info@bilohash.com](mailto:info@bilohash.com)  
-**Website:** [https://bilohash.com/hosting/](https://bilohash.com/hosting/)
+- Unlimited commercial hosting resale after day 30 without a paid license
+- Remove or bypass the demo license mechanism
+- Redistribute as a competing SaaS product without written permission
+- Commit or publish **production secrets** (API tokens, WHM keys, DB passwords)
 
-We offer:
+## After 30 days
 
-- Per-server and per-seat licensing
-- White-label panel branding
-- Ecosystem bundle pricing
-- Migration and onboarding support
+Contact BILOHASH for a commercial / production license:
 
-## Open source on GitHub
+- **Email:** [info@bilohash.com](mailto:info@bilohash.com)  
+- **Live product:** [https://solaskinner.com/](https://solaskinner.com/)  
+- **Docs / source:** [https://github.com/Ruslan-Bilohash/hosting](https://github.com/Ruslan-Bilohash/hosting)
 
-Source code is published on GitHub for transparency, evaluation, and self-hosting during the demo period:
+Commercial options: per-server license, white-label branding, onboarding support.
 
-[https://github.com/Ruslan-Bilohash/hosting](https://github.com/Ruslan-Bilohash/hosting)
+## GitHub public test
 
-Forking for private evaluation is permitted. Redistribution as a competing hosted product without a license is not permitted.
+Source is published for transparency and community testing:
+
+[https://github.com/Ruslan-Bilohash/hosting](https://github.com/Ruslan-Bilohash/hosting)  
+Releases: [https://github.com/Ruslan-Bilohash/hosting/releases](https://github.com/Ruslan-Bilohash/hosting/releases)
+
+Forking for private evaluation is allowed.
 
 ## Third-party components
 

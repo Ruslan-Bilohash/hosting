@@ -2,6 +2,10 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/site-config.php';
+// Resource / limit helpers need plan catalog (admin dashboard, panel bootstrap).
+if (is_file(__DIR__ . '/plans.php')) {
+    require_once __DIR__ . '/plans.php';
+}
 
 function hs_settings_file(): string
 {
@@ -164,22 +168,55 @@ function hs_folder_size_mb(string $path): float
 function hs_add_subdomain(string $userId, string $name, string $folder = ''): bool
 {
     require_once __DIR__ . '/subdomain-dns.php';
+    require_once __DIR__ . '/storage.php';
     $name = strtolower(trim(preg_replace('/[^a-z0-9-]/', '', $name) ?? ''));
     if ($name === '' || strlen($name) > 32) {
         return false;
     }
+    $user = hs_user_by_id($userId);
+    if ($user === null) {
+        return false;
+    }
+    $username = hs_user_public_rel_prefix($user);
+    if ($username === '') {
+        return false;
+    }
+
     $folder = hs_normalize_public_html_folder($folder);
-    if ($folder !== '') {
-        $abs = hs_public_path($folder);
-        if (!is_dir($abs)) {
+    // Default document root = this client's workspace only (never global public_html/).
+    if ($folder === '') {
+        $folder = $username;
+    }
+    if (!hs_public_html_folder_allowed_for_user($user, $folder)) {
+        return false;
+    }
+    $abs = hs_public_path($folder);
+    if (!is_dir($abs)) {
+        if (!@mkdir($abs, 0755, true) && !is_dir($abs)) {
             return false;
         }
     }
+
     $settings = hs_user_settings_get($userId);
     $domains = $settings['domains'] ?? [];
     if (!is_array($domains)) {
         $domains = [];
     }
+    // Drop any legacy entries that pointed outside this account (privacy fix).
+    $domains = array_values(array_filter(
+        $domains,
+        static function ($d) use ($user): bool {
+            if (!is_array($d)) {
+                return false;
+            }
+            $f = hs_normalize_public_html_folder((string) ($d['folder'] ?? ''));
+            if ($f === '') {
+                return true;
+            }
+
+            return hs_public_html_folder_allowed_for_user($user, $f);
+        }
+    ));
     foreach ($domains as $d) {
         if (($d['name'] ?? '') === $name) {
             return false;
@@ -193,13 +230,10 @@ function hs_add_subdomain(string $userId, string $name, string $folder = ''): bo
     if (!hs_user_settings_save($userId, ['domains' => $domains])) {
         return false;
     }
-    $user = hs_user_by_id($userId);
     $primary = strtolower(trim((string) ($settings['primary_domain'] ?? hs_default_primary_domain())));
     hs_dns_ensure_subdomain_record($userId, $name, $primary, $user);
     $updated = hs_user_settings_get($userId);
-    if ($user !== null) {
-        hs_apply_subdomain_routes((string) ($user['username'] ?? ''), $updated);
-    }
+    hs_apply_subdomain_routes((string) ($user['username'] ?? ''), $updated);
     return true;
 }
 
@@ -394,8 +428,13 @@ function hs_performance_scores(array $user, array $sites): array
 
 function hs_resource_usage(array $user, array $sites): array
 {
-    $plan = hs_plan((string) ($user['plan'] ?? 'starter'));
+    if (!function_exists('hs_plan') && is_file(__DIR__ . '/plans.php')) {
+        require_once __DIR__ . '/plans.php';
+    }
     $planId = (string) ($user['plan'] ?? 'starter');
+    $plan = function_exists('hs_plan')
+        ? hs_plan($planId)
+        : ['storage_mb' => 5120, 'id' => $planId];
     $storageMax = (int) ($plan['storage_mb'] ?? 512);
     $sitesMax = hs_user_site_limit($user);
     $userPath = hs_public_path((string) ($user['username'] ?? ''));

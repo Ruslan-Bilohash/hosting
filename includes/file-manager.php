@@ -19,6 +19,33 @@ function hs_fm_user_root(array $user): string
     return realpath($root) ?: $root;
 }
 
+function hs_fm_admin_mode(): bool
+{
+    return !empty($GLOBALS['hs_fm_admin_mode']);
+}
+
+/** File manager jail: active domain docroot, or full account folder. */
+function hs_fm_scope_root(array $user): string
+{
+    if (!empty($GLOBALS['hs_fm_override_root']) && is_string($GLOBALS['hs_fm_override_root'])) {
+        return $GLOBALS['hs_fm_override_root'];
+    }
+
+    require_once __DIR__ . '/domain-workspace.php';
+    if (hs_fm_scope_is_domain($user)) {
+        $settings = hs_user_settings_get((string) ($user['id'] ?? ''));
+        $domain = hs_active_domain($settings);
+        $path = hs_domain_docroot_path($user, $domain, $settings);
+        if (!is_dir($path)) {
+            mkdir($path, 0755, true);
+        }
+
+        return realpath($path) ?: $path;
+    }
+
+    return hs_fm_user_root($user);
+}
+
 function hs_fm_norm_rel(string $rel): string
 {
     $rel = str_replace('\\', '/', trim($rel));
@@ -78,19 +105,49 @@ function hs_fm_is_sensitive_rel(string $rel): bool
 
 function hs_fm_resolve(array $user, string $rel): ?string
 {
-    $root = hs_fm_user_root($user);
+    $root = hs_fm_scope_root($user);
     $rel = hs_fm_norm_rel($rel);
     return hs_safe_path($root, $rel) ?? ($rel === '' ? $root : null);
 }
 
 function hs_fm_rel_from_abs(string $root, string $abs): string
 {
-    $root = rtrim(str_replace('\\', '/', $root), '/');
+    $root = str_replace('\\', '/', $root);
     $abs = str_replace('\\', '/', $abs);
-    if (!str_starts_with($abs, $root)) {
+    // Filesystem root must stay as "/" (rtrim would turn it into "")
+    if ($root === '/' || $root === '') {
+        if ($abs === '/' || $abs === '') {
+            return '';
+        }
+
+        return ltrim($abs, '/');
+    }
+    // Windows drive root e.g. C: or C:/
+    if (preg_match('/^[A-Za-z]:\/?$/', $root) === 1) {
+        $drive = strtoupper($root[0]) . ':/';
+        $absN = $abs;
+        if (preg_match('/^[A-Za-z]:/', $absN) === 1) {
+            $absN = strtoupper($absN[0]) . substr($absN, 1);
+        }
+        if ($absN === rtrim($drive, '/') || $absN === $drive) {
+            return '';
+        }
+        if (!str_starts_with($absN, $drive)) {
+            return '';
+        }
+
+        return ltrim(substr($absN, strlen($drive)), '/');
+    }
+    $root = rtrim($root, '/');
+    if ($abs === $root || $abs === $root . '/') {
         return '';
     }
-    return ltrim(substr($abs, strlen($root)), '/');
+    $prefix = $root . '/';
+    if (!str_starts_with($abs, $prefix)) {
+        return '';
+    }
+
+    return substr($abs, strlen($prefix));
 }
 
 function hs_fm_is_editable(string $name): bool
@@ -234,7 +291,7 @@ function hs_fm_entry(string $root, string $rel, string $name): array
 /** @return array{ok:bool,path:string,entries:list<array<string,mixed>>,parent:string,error?:string} */
 function hs_fm_list(array $user, string $rel): array
 {
-    $root = hs_fm_user_root($user);
+    $root = hs_fm_scope_root($user);
     $dir = hs_fm_resolve($user, $rel);
     if ($dir === null || !is_dir($dir)) {
         return ['ok' => false, 'path' => '', 'entries' => [], 'parent' => '', 'error' => 'not_found'];
@@ -245,7 +302,7 @@ function hs_fm_list(array $user, string $rel): array
         if ($name === '.' || $name === '..') {
             continue;
         }
-        if (hs_fm_is_sensitive_name($name)) {
+        if (hs_fm_admin_mode() === false && hs_fm_is_sensitive_name($name)) {
             continue;
         }
         $entries[] = hs_fm_entry($root, $rel, $name);
@@ -266,7 +323,7 @@ function hs_fm_list(array $user, string $rel): array
 /** @return array{ok:bool,content?:string,path?:string,binary?:bool,size?:int,error?:string} */
 function hs_fm_read(array $user, string $rel): array
 {
-    if (hs_fm_is_sensitive_rel($rel)) {
+    if (hs_fm_admin_mode() === false && hs_fm_is_sensitive_rel($rel)) {
         return ['ok' => false, 'error' => 'forbidden'];
     }
     $path = hs_fm_resolve($user, $rel);
@@ -299,7 +356,7 @@ function hs_fm_read(array $user, string $rel): array
 /** @return array{ok:bool,error?:string} */
 function hs_fm_write(array $user, string $rel, string $content): array
 {
-    if (hs_fm_is_sensitive_rel($rel)) {
+    if (hs_fm_admin_mode() === false && hs_fm_is_sensitive_rel($rel)) {
         return ['ok' => false, 'error' => 'forbidden'];
     }
     $path = hs_fm_resolve($user, $rel);
@@ -333,7 +390,7 @@ function hs_fm_mkdir(array $user, string $rel, string $name): array
     if (!mkdir($target, 0755)) {
         return ['ok' => false, 'error' => 'mkdir_failed'];
     }
-    $root = hs_fm_user_root($user);
+    $root = hs_fm_scope_root($user);
     return ['ok' => true, 'path' => hs_fm_rel_from_abs($root, $target)];
 }
 
@@ -355,21 +412,21 @@ function hs_fm_create_file(array $user, string $rel, string $name): array
     if (file_put_contents($target, '') === false) {
         return ['ok' => false, 'error' => 'create_failed'];
     }
-    $root = hs_fm_user_root($user);
+    $root = hs_fm_scope_root($user);
     return ['ok' => true, 'path' => hs_fm_rel_from_abs($root, $target)];
 }
 
 /** @return array{ok:bool,error?:string} */
 function hs_fm_delete(array $user, string $rel): array
 {
-    if (hs_fm_is_sensitive_rel($rel)) {
+    if (hs_fm_admin_mode() === false && hs_fm_is_sensitive_rel($rel)) {
         return ['ok' => false, 'error' => 'forbidden'];
     }
     $path = hs_fm_resolve($user, $rel);
     if ($path === null) {
         return ['ok' => false, 'error' => 'not_found'];
     }
-    $root = hs_fm_user_root($user);
+    $root = hs_fm_scope_root($user);
     if (realpath($path) === realpath($root)) {
         return ['ok' => false, 'error' => 'protected'];
     }
@@ -390,14 +447,14 @@ function hs_fm_rename(array $user, string $rel, string $newName): array
     if ($newName === '' || preg_match('/[\/\\\\]/', $newName)) {
         return ['ok' => false, 'error' => 'invalid_name'];
     }
-    if (hs_fm_is_sensitive_rel($rel) || hs_fm_is_sensitive_name($newName)) {
+    if (hs_fm_admin_mode() === false && (hs_fm_is_sensitive_rel($rel) || hs_fm_is_sensitive_name($newName))) {
         return ['ok' => false, 'error' => 'forbidden'];
     }
     $path = hs_fm_resolve($user, $rel);
     if ($path === null || !file_exists($path)) {
         return ['ok' => false, 'error' => 'not_found'];
     }
-    $root = hs_fm_user_root($user);
+    $root = hs_fm_scope_root($user);
     if (realpath($path) === realpath($root)) {
         return ['ok' => false, 'error' => 'protected'];
     }
@@ -411,23 +468,74 @@ function hs_fm_rename(array $user, string $rel, string $newName): array
     return ['ok' => true, 'path' => hs_fm_rel_from_abs($root, $dest)];
 }
 
+/**
+ * Ensure nested folders under $rel exist (for bulk / folder uploads).
+ *
+ * @return array{ok:bool,path?:string,error?:string}
+ */
+function hs_fm_ensure_subdir(array $user, string $rel, string $subdir): array
+{
+    $subdir = str_replace('\\', '/', $subdir);
+    $subdir = trim($subdir, '/');
+    if ($subdir === '' || str_contains($subdir, '..')) {
+        return ['ok' => true, 'path' => hs_fm_norm_rel($rel)];
+    }
+    $parts = array_values(array_filter(explode('/', $subdir), static fn(string $p): bool => $p !== '' && $p !== '.'));
+    $cur = hs_fm_norm_rel($rel);
+    foreach ($parts as $part) {
+        $part = preg_replace('/[^a-zA-Z0-9._-]/', '_', $part) ?: 'folder';
+        $next = ($cur === '' ? '' : $cur . '/') . $part;
+        $next = hs_fm_norm_rel($next);
+        $abs = hs_fm_resolve($user, $next);
+        if ($abs !== null && is_dir($abs)) {
+            $cur = $next;
+            continue;
+        }
+        $res = hs_fm_mkdir($user, $cur, $part);
+        if (!$res['ok'] && ($res['error'] ?? '') !== 'exists') {
+            return ['ok' => false, 'error' => (string) ($res['error'] ?? 'mkdir_failed')];
+        }
+        $cur = (string) ($res['path'] ?? $next);
+        $cur = hs_fm_norm_rel($cur);
+    }
+
+    return ['ok' => true, 'path' => $cur];
+}
+
 /** @return array{ok:bool,name?:string,path?:string,error?:string} */
-function hs_fm_upload(array $user, string $rel, array $file): array
+function hs_fm_upload(array $user, string $rel, array $file, string $relativePath = ''): array
 {
     if (empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
         return ['ok' => false, 'error' => 'no_file'];
     }
-    $parent = hs_fm_resolve($user, $rel);
+    $uploadRel = hs_fm_norm_rel($rel);
+    $relativePath = str_replace('\\', '/', trim($relativePath));
+    if ($relativePath !== '' && !str_contains($relativePath, '..')) {
+        $dirPart = dirname($relativePath);
+        if ($dirPart !== '.' && $dirPart !== '') {
+            $ens = hs_fm_ensure_subdir($user, $uploadRel, $dirPart);
+            if (!$ens['ok']) {
+                return $ens;
+            }
+            $uploadRel = (string) ($ens['path'] ?? $uploadRel);
+        }
+        $name = basename($relativePath);
+    } else {
+        $name = basename((string) ($file['name'] ?? 'file'));
+    }
+    $parent = hs_fm_resolve($user, $uploadRel);
     if ($parent === null || !is_dir($parent)) {
         return ['ok' => false, 'error' => 'not_found'];
     }
-    $name = basename((string) ($file['name'] ?? 'file'));
     $name = preg_replace('/[^a-zA-Z0-9._-]/', '_', $name) ?: 'file';
+    if (hs_upload_name_blocked($name)) {
+        return ['ok' => false, 'error' => 'blocked_type'];
+    }
     $target = rtrim($parent, '/\\') . '/' . $name;
     if (!move_uploaded_file($file['tmp_name'], $target)) {
         return ['ok' => false, 'error' => 'upload_failed'];
     }
-    $root = hs_fm_user_root($user);
+    $root = hs_fm_scope_root($user);
     return ['ok' => true, 'name' => $name, 'path' => hs_fm_rel_from_abs($root, $target)];
 }
 
@@ -438,7 +546,7 @@ function hs_fm_search(array $user, string $rel, string $query): array
     if ($query === '') {
         return [];
     }
-    $root = hs_fm_user_root($user);
+    $root = hs_fm_scope_root($user);
     $base = hs_fm_resolve($user, $rel) ?? $root;
     if (!is_dir($base)) {
         return [];
@@ -470,7 +578,7 @@ function hs_fm_search(array $user, string $rel, string $query): array
 /** @return list<array{path:string,name:string,children?:list<mixed>}> */
 function hs_fm_tree(array $user, int $depth = 3): array
 {
-    $root = hs_fm_user_root($user);
+    $root = hs_fm_scope_root($user);
     $build = static function (string $dir, string $rel, int $d) use (&$build, $root, $depth): array {
         if ($d > $depth) {
             return [];
@@ -499,7 +607,7 @@ function hs_fm_tree(array $user, int $depth = 3): array
 
 function hs_fm_download_path(array $user, string $rel): ?string
 {
-    if (hs_fm_is_sensitive_rel($rel)) {
+    if (hs_fm_admin_mode() === false && hs_fm_is_sensitive_rel($rel)) {
         return null;
     }
     $path = hs_fm_resolve($user, $rel);
@@ -550,7 +658,7 @@ function hs_fm_preview(array $user, string $rel): array
 /** chmod the account root folder (public_html/username). */
 function hs_fm_chmod_user_root(array $user, string $mode): array
 {
-    $root = hs_fm_user_root($user);
+    $root = hs_fm_scope_root($user);
     if (!is_dir($root)) {
         return ['ok' => false, 'error' => 'not_found'];
     }
@@ -575,7 +683,7 @@ function hs_fm_chmod(array $user, string $rel, string $mode): array
     if ($path === null) {
         return ['ok' => false, 'error' => 'not_found'];
     }
-    $root = hs_fm_user_root($user);
+    $root = hs_fm_scope_root($user);
     if (realpath($path) === realpath($root)) {
         return ['ok' => false, 'error' => 'protected'];
     }
@@ -600,7 +708,7 @@ function hs_fm_duplicate(array $user, string $rel): array
     if ($path === null || !file_exists($path)) {
         return ['ok' => false, 'error' => 'not_found'];
     }
-    $root = hs_fm_user_root($user);
+    $root = hs_fm_scope_root($user);
     if (realpath($path) === realpath($root)) {
         return ['ok' => false, 'error' => 'protected'];
     }
@@ -660,7 +768,7 @@ function hs_fm_archive_create(array $user, string $rel, string $zipName = ''): a
     if ($path === null || !file_exists($path)) {
         return ['ok' => false, 'error' => 'not_found'];
     }
-    $root = hs_fm_user_root($user);
+    $root = hs_fm_scope_root($user);
     if (realpath($path) === realpath($root)) {
         return ['ok' => false, 'error' => 'protected'];
     }
@@ -788,7 +896,7 @@ function hs_fm_archive_extract(array $user, string $rel): array
         return ['ok' => false, 'error' => 'zip_extract'];
     }
     $zip->close();
-    $root = hs_fm_user_root($user);
+    $root = hs_fm_scope_root($user);
     return ['ok' => true, 'path' => hs_fm_rel_from_abs($root, $dest)];
 }
 

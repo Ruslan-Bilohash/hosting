@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="SolaSkinner">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#047857"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="38%" cy="42%" r="55%">
+      <stop offset="0%" stop-color="#fde68a"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </radialGradient>
+    <linearGradient id="ray" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fcd34d"/>
+      <stop offset="100%" stop-color="#f97316"/>
+    </linearGradient>
+    <linearGradient id="f1" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="f2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#34d399"/>
+    </linearGradient>
+    <linearGradient id="f3" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#60a5fa"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <!-- sun -->
+  <circle cx="24" cy="32" r="9" fill="url(#sun)"/>
+  <g stroke="url(#ray)" stroke-width="2.4" stroke-linecap="round">
+    <line x1="24" y1="16" x2="24" y2="19.5"/>
+    <line x1="24" y1="44.5" x2="24" y2="48"/>
+    <line x1="8" y1="32" x2="11.5" y2="32"/>
+    <line x1="36.5" y1="32" x2="40" y2="32"/>
+    <line x1="12.8" y1="20.8" x2="15.3" y2="23.3"/>
+    <line x1="32.7" y1="40.7" x2="35.2" y2="43.2"/>
+    <line x1="12.8" y1="43.2" x2="15.3" y2="40.7"/>
+    <line x1="32.7" y1="23.3" x2="35.2" y2="20.8"/>
+  </g>
+  <!-- fiber cables -->
+  <path d="M34 27 C40 25.5 46 24.5 52 24" stroke="url(#f1)" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+  <path d="M34 32 C41 32 48 32 54 32" stroke="url(#f2)" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+  <path d="M34 37 C40 38.5 46 40 52 41" stroke="url(#f3)" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+  <circle cx="52" cy="24" r="2.4" fill="#22d3ee"/>
+  <circle cx="54" cy="32" r="2.6" fill="#34d399"/>
+  <circle cx="52" cy="41" r="2.4" fill="#60a5fa"/>
+</svg>

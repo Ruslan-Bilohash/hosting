@@ -20,6 +20,7 @@ function hs_panel_section_tabs(string $section): array
         ],
         'domains' => [
             ['id' => 'overview', 'label_key' => 'tab_dom_overview', 'nav_key' => 'domains'],
+            ['id' => 'contacts', 'label_key' => 'tab_dom_contacts', 'nav_key' => 'dom-contacts'],
             ['id' => 'dns', 'label_key' => 'tab_dom_dns', 'nav_key' => 'dom-dns'],
             ['id' => 'subdomains', 'label_key' => 'tab_dom_sub', 'nav_key' => 'dom-sub'],
             ['id' => 'parked', 'label_key' => 'tab_dom_parked', 'nav_key' => 'dom-parked'],

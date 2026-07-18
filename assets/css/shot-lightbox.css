@@ -1,0 +1,121 @@
+/* Screenshot lightbox (homepage / public) */
+.hs-shot-zoom-trigger {
+  display: block;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: zoom-in;
+  position: relative;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  border-radius: inherit;
+}
+.hs-shot-zoom-trigger:focus-visible {
+  outline: 2px solid var(--hs-accent, #059669);
+  outline-offset: 3px;
+}
+.hs-shot-zoom-trigger:hover .hs-shot-zoom-hint,
+.hs-shot-zoom-trigger:focus-visible .hs-shot-zoom-hint {
+  opacity: 1;
+  transform: scale(1);
+}
+.hs-shot-zoom-hint {
+  position: absolute;
+  right: 0.65rem;
+  bottom: 0.65rem;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #f8fafc;
+  font-size: 0.95rem;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+@media (hover: none) {
+  .hs-shot-zoom-hint {
+    opacity: 0.92;
+    transform: none;
+  }
+}
+.hs-home-panel-feat-shot {
+  display: block;
+  width: 100%;
+  text-align: left;
+}
+.hs-home-panel-feat-shot-label {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #047857;
+}
+.hs-home-panel-shot-link.hs-shot-zoom-trigger {
+  border-radius: 0;
+}
+.hs-shot-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: grid;
+  place-items: center;
+  padding: clamp(0.75rem, 3vw, 1.5rem);
+}
+.hs-shot-lightbox[hidden] {
+  display: none !important;
+}
+.hs-shot-lightbox-backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  padding: 0;
+  background: rgba(15, 23, 42, 0.82);
+  cursor: zoom-out;
+}
+.hs-shot-lightbox-panel {
+  position: relative;
+  z-index: 1;
+  max-width: min(96vw, 1280px);
+  max-height: 92dvh;
+  margin: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
+  background: #0f172a;
+}
+.hs-shot-lightbox-panel img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(96vw, 1280px);
+  max-height: 92dvh;
+  object-fit: contain;
+  margin: 0 auto;
+}
+.hs-shot-lightbox-close {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: none;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.85);
+  color: #f8fafc;
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+.hs-shot-lightbox-close:hover {
+  background: #047857;
+}

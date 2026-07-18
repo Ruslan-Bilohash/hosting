@@ -6,6 +6,9 @@ $app = 'auction';
 $title = 'Auction';
 $color = '#f59e0b';
 $demo = '{{DEMO_URL}}';
+if ($demo === '{{DEMO_URL}}' || trim((string) $demo) === '') {
+    $demo = 'https://bilohash.com/auction/site/';
+}
 $year = '{{YEAR}}';
 ?><!DOCTYPE html>
 <html lang="en">

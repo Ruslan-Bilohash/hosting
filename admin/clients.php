@@ -8,6 +8,7 @@ require_once dirname(__DIR__) . '/includes/admin-clients.php';
 require_once dirname(__DIR__) . '/includes/plan-catalog.php';
 require_once dirname(__DIR__) . '/includes/impersonation.php';
 require_once dirname(__DIR__) . '/includes/invoice-ui.php';
+require_once dirname(__DIR__) . '/includes/admin-nav.php';
 
 hs_admin_require();
 
@@ -57,15 +58,10 @@ $allServices = hs_plan_catalog_services(false);
 $userServiceIds = is_array($editUser['plan_services'] ?? null) ? $editUser['plan_services'] : [];
 
 $page_title = $t['admin_clients_manage'] ?? 'Manage clients';
+$admin_nav_active = 'clients';
 ob_start();
 ?>
 <div class="hs-admin-page">
-  <nav class="hs-admin-tabs" style="margin-bottom:1.25rem">
-    <a href="<?= hs_h(hs_admin_url()) ?>" class="hs-btn hs-btn-ghost"><i class="fa-solid fa-gauge-high"></i> <?= hs_h($t['admin_title'] ?? '') ?></a>
-    <a href="<?= hs_h(hs_admin_url('clients.php')) ?>" class="hs-btn hs-btn-ghost is-active"><i class="fa-solid fa-users"></i> <?= hs_h($t['admin_clients'] ?? '') ?></a>
-    <a href="<?= hs_h(hs_admin_url('plans.php')) ?>" class="hs-btn hs-btn-ghost"><i class="fa-solid fa-layer-group"></i> <?= hs_h($t['admin_plans_title'] ?? 'Plans') ?></a>
-  </nav>
-
   <?php if ($success !== ''): ?><div class="hs-alert hs-alert-success"><?= hs_h($success) ?></div><?php endif; ?>
   <?php if ($error !== ''): ?><div class="hs-alert hs-alert-error"><?= hs_h($error) ?></div><?php endif; ?>
 
@@ -80,12 +76,12 @@ ob_start();
         <div class="hs-table-wrap">
           <table class="hs-table hs-admin-clients-table">
             <thead><tr>
-              <th><?= hs_h($t['account_username'] ?? 'User') ?></th>
-              <th>Email</th>
-              <th><?= hs_h($t['account_plan'] ?? 'Plan') ?></th>
+              <th><?= hs_h($t['admin_col_user'] ?? $t['account_username'] ?? 'User') ?></th>
+              <th><?= hs_h($t['admin_col_email'] ?? 'Email') ?></th>
+              <th><?= hs_h($t['admin_col_plan'] ?? $t['account_plan'] ?? 'Plan') ?></th>
               <th><?= hs_h($t['admin_client_status'] ?? 'Status') ?></th>
               <th><?= hs_h($t['admin_disk'] ?? 'Disk') ?></th>
-              <th>Sites</th>
+              <th><?= hs_h($t['admin_col_sites'] ?? 'Sites') ?></th>
               <th></th>
             </tr></thead>
             <tbody>
@@ -99,7 +95,7 @@ ob_start();
                 <td><strong><?= hs_h((string) ($u['username'] ?? '')) ?></strong></td>
                 <td><?= hs_h((string) ($u['email'] ?? '')) ?></td>
                 <td><code><?= hs_h((string) ($u['plan'] ?? '')) ?></code></td>
-                <td><span class="hs-plan-status hs-plan-status-<?= hs_h($status) ?>"><?= hs_h($status) ?></span></td>
+                <td><span class="hs-plan-status hs-plan-status-<?= hs_h($status) ?>"><?= hs_h(hs_admin_client_status_label($t, $status)) ?></span></td>
                 <td><?= hs_h(hs_format_disk_gb((float) ($res['storage_used_mb'] ?? 0))) ?> GB</td>
                 <td><?= (int) $row['site_count'] ?></td>
                 <td class="hs-admin-row-actions">
@@ -143,7 +139,7 @@ ob_start();
               <label><?= hs_h($t['admin_client_status'] ?? 'Status') ?></label>
               <select name="subscription_status">
                 <?php foreach (['active', 'pending', 'suspended'] as $st): ?>
-                  <option value="<?= hs_h($st) ?>"<?= ($editUser['subscription_status'] ?? 'active') === $st ? ' selected' : '' ?>><?= hs_h($st) ?></option>
+                  <option value="<?= hs_h($st) ?>"<?= ($editUser['subscription_status'] ?? 'active') === $st ? ' selected' : '' ?>><?= hs_h(hs_admin_client_status_label($t, $st)) ?></option>
                 <?php endforeach; ?>
               </select>
             </div>
@@ -177,4 +173,4 @@ ob_start();
 </div>
 <?php
 $content = ob_get_clean();
-require dirname(__DIR__) . '/includes/layout-public.php';
+require dirname(__DIR__) . '/includes/layout-admin.php';

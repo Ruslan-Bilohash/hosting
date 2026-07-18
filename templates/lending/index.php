@@ -6,6 +6,9 @@ $app = 'lending';
 $title = 'Business Landing';
 $color = '#ec4899';
 $demo = '{{DEMO_URL}}';
+if ($demo === '{{DEMO_URL}}' || trim((string) $demo) === '') {
+    $demo = 'https://bilohash.com/lending/';
+}
 $year = '{{YEAR}}';
 ?><!DOCTYPE html>
 <html lang="en">

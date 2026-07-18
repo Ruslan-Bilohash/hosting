@@ -64,18 +64,46 @@ function hs_client_user(): ?array
     return $id ? hs_user_by_id($id) : null;
 }
 
+/**
+ * Soft paywall (as before): pending/unpaid clients may use the panel.
+ * Hosting tools are gated per-page via panel-access.php.
+ * Only force-redirect non-panel public pages (legacy checkout, etc.) to activate.
+ */
+function hs_client_subscription_is_active(?array $user): bool
+{
+    if ($user === null) {
+        return false;
+    }
+    return (string) ($user['subscription_status'] ?? '') === 'active';
+}
+
 function hs_client_require(): array
 {
     $user = hs_client_user();
     if ($user === null) {
+        // Stale session id (user removed / storage switch) → clear, avoid login↔panel loop.
+        if (hs_client_id() !== null) {
+            hs_session_start();
+            unset(
+                $_SESSION[HS_CLIENT_SESSION],
+                $_SESSION[HS_CLIENT_USER],
+                $_SESSION['hs_panel_session_start'],
+                $_SESSION['panel_visits']
+            );
+        }
         hs_redirect('login.php');
     }
-    $script = basename($_SERVER['SCRIPT_NAME'] ?? '');
+    $script = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
     $scriptPath = (string) ($_SERVER['SCRIPT_NAME'] ?? '');
-    if (($user['subscription_status'] ?? 'active') !== 'active'
-        && !in_array($script, ['checkout.php', 'logout.php'], true)
-        && strpos($scriptPath, '/panel/stop-impersonate') === false) {
-        hs_redirect('checkout.php');
+    if (!hs_client_subscription_is_active($user)) {
+        $panelDir = '/' . trim((string) (defined('HS_PANEL_DIR') ? HS_PANEL_DIR : 'panel'), '/') . '/';
+        $isPanel = str_contains($scriptPath, $panelDir);
+        $publicAllowed = in_array($script, ['logout.php', 'payment-return.php', 'checkout.php'], true);
+        $impersonateStop = str_contains($scriptPath, '/panel/stop-impersonate');
+        // Outside the client panel → send to payment/activation page.
+        if (!$isPanel && !$publicAllowed && !$impersonateStop) {
+            hs_redirect(hs_panel_path('activate.php'));
+        }
     }
     return $user;
 }
@@ -94,8 +122,12 @@ function hs_client_register(array $data): array
     $phone = trim((string) ($data['phone'] ?? ''));
     $plan = (string) ($data['plan'] ?? 'starter');
 
-    if (empty($data['consent_terms']) || empty($data['consent_privacy'])) {
-        return ['ok' => false, 'error' => 'consent'];
+    // EU / Norway distance-contract + GDPR: required agreements before account creation
+    $requiredConsents = ['consent_terms', 'consent_privacy', 'consent_domains', 'consent_digital', 'consent_age'];
+    foreach ($requiredConsents as $ck) {
+        if (empty($data[$ck])) {
+            return ['ok' => false, 'error' => 'consent'];
+        }
     }
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         return ['ok' => false, 'error' => 'invalid_email'];
@@ -167,16 +199,44 @@ function hs_client_register(array $data): array
         'consents' => [
             'terms_at' => gmdate('c'),
             'privacy_at' => gmdate('c'),
+            'domains_at' => gmdate('c'),
+            'digital_at' => gmdate('c'),
+            'age_at' => gmdate('c'),
             'marketing' => !empty($data['consent_marketing']),
+            'marketing_at' => !empty($data['consent_marketing']) ? gmdate('c') : null,
+            'ip' => (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
+            'ua' => mb_substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 250),
         ],
     ];
     hs_session_start();
+    require_once __DIR__ . '/domain-cart.php';
+    require_once __DIR__ . '/order-types.php';
+    $cartDomains = hs_domain_cart_list();
     $pending = $_SESSION['hs_pending_domain'] ?? null;
     if (is_string($pending) && $pending !== '') {
-        $user['pending_domain'] = $pending;
-    } elseif ($normalizedDomain !== null) {
-        $user['pending_domain'] = $normalizedDomain;
+        $cartDomains[] = $pending;
+    }
+    if ($normalizedDomain !== null) {
+        $cartDomains[] = $normalizedDomain;
         $_SESSION['hs_pending_domain'] = $normalizedDomain;
+    }
+    $cartDomains = hs_domain_cart_normalize_list($cartDomains);
+    $user['pending_domains'] = $cartDomains;
+    $user['pending_domain'] = $cartDomains[0] ?? null;
+    if ($cartDomains !== []) {
+        hs_domain_cart_set($cartDomains);
+    }
+    $orderTypeRaw = trim((string) ($data['order'] ?? $data['order_type'] ?? ''));
+    if ($orderTypeRaw !== '') {
+        $user['order_type'] = hs_order_type_normalize($orderTypeRaw);
+    } elseif ($cartDomains !== []) {
+        $user['order_type'] = 'domain';
+        $user['plan'] = 'domain';
+    } else {
+        $user['order_type'] = 'hosting';
+    }
+    if (($user['order_type'] ?? '') === 'domain') {
+        $user['plan'] = 'domain';
     }
     require_once __DIR__ . '/client-identity.php';
     $user = hs_client_assign_identity_fields($user);

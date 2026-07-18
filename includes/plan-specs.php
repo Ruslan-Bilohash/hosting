@@ -1,16 +1,42 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Real NS for panel DNS zone (must resolve on the public internet).
+ *
+ * @return array{0:string,1:string}
+ */
+function hs_server_ns_pair(): array
+{
+    $ns = function_exists('hs_display_nameservers') ? hs_display_nameservers() : [];
+    if (count($ns) < 2 && function_exists('hs_registry_nameservers')) {
+        $ns = hs_registry_nameservers();
+    }
+    $ns1 = strtolower(trim((string) ($ns[0] ?? '')));
+    $ns2 = strtolower(trim((string) ($ns[1] ?? '')));
+    // Never show fictional brand NS that do not exist in DNS
+    if ($ns1 === '' || str_contains($ns1, 'example.com') || str_starts_with($ns1, 'ns1.solaskinner.') || str_starts_with($ns1, 'ns2.solaskinner.')) {
+        $ns1 = 'dns1.namecheaphosting.com';
+    }
+    if ($ns2 === '' || str_contains($ns2, 'example.com') || str_starts_with($ns2, 'ns1.solaskinner.') || str_starts_with($ns2, 'ns2.solaskinner.')) {
+        $ns2 = 'dns2.namecheaphosting.com';
+    }
+
+    return [$ns1, $ns2];
+}
+
 /** Hostinger-style values shown in the demo panel (not client-specific). */
 function hs_demo_panel_constants(): array
 {
+    [$ns1, $ns2] = hs_server_ns_pair();
+
     return [
-        'ip' => HS_SERVER_IP,
+        'ip' => function_exists('hs_server_ip') ? hs_server_ip() : HS_SERVER_IP,
         'server_name' => 'demo-server',
-        'location' => 'Europe',
+        'location' => function_exists('hs_host_profile_value') ? (string) (hs_host_profile_value('server_location') ?: 'Europe') : 'Europe',
         'backup_location' => 'EU',
-        'ns1' => 'ns1.example.com',
-        'ns2' => 'ns2.example.com',
+        'ns1' => $ns1,
+        'ns2' => $ns2,
         'ftp_host' => hs_default_primary_domain(),
         'ftp_path' => 'public_html',
         'ftp_user_prefix' => HS_FTP_USER_PREFIX,
@@ -23,13 +49,17 @@ function hs_server_constants(?array $user = null): array
     if ($user !== null && hs_is_demo_panel_user($user)) {
         return hs_demo_panel_constants();
     }
+    [$ns1, $ns2] = hs_server_ns_pair();
+    $ip = function_exists('hs_server_ip') ? hs_server_ip() : HS_SERVER_IP;
+    $loc = function_exists('hs_host_profile_value') ? (string) (hs_host_profile_value('server_location') ?: 'Europe') : 'Europe';
+
     return [
-        'ip' => HS_SERVER_IP,
-        'server_name' => 'server1',
-        'location' => 'Europe',
+        'ip' => $ip,
+        'server_name' => function_exists('hs_host_profile_value') ? (string) (hs_host_profile_value('server_hostname') ?: 'server1') : 'server1',
+        'location' => $loc,
         'backup_location' => 'EU',
-        'ns1' => 'ns1.example.com',
-        'ns2' => 'ns2.example.com',
+        'ns1' => $ns1,
+        'ns2' => $ns2,
         'ftp_host' => hs_default_primary_domain(),
         'ftp_path' => 'public_html',
         'ftp_user_prefix' => HS_FTP_USER_PREFIX,
@@ -78,14 +108,43 @@ function hs_plan_display_domain(array $user, array $settings): string
     return $domain !== '' ? $domain : (string) $srv['ftp_host'];
 }
 
+/** hostinger = prefix.domain (legacy hPanel); cpanel = main cPanel FTP user (shared multi-tenant). */
+function hs_ftp_username_mode(): string
+{
+    $mode = function_exists('hs_host_profile_value') ? (string) (hs_host_profile_value('ftp_username_mode') ?? '') : '';
+    $mode = strtolower(trim($mode));
+
+    return in_array($mode, ['hostinger', 'cpanel', 'client'], true) ? $mode : 'cpanel';
+}
+
+/**
+ * FTP login username shown to clients.
+ * Shared Namecheap: real cPanel account user (e.g. solaffhv) — NOT a fake prefix.domain string.
+ */
 function hs_ftp_username(string $domain, ?array $user = null): string
 {
     $srv = hs_server_constants($user);
     if ($user !== null && hs_is_demo_panel_user($user)) {
         $domain = (string) $srv['ftp_host'];
     }
+    $mode = hs_ftp_username_mode();
+    if ($mode === 'cpanel') {
+        // Real shared hosting FTP account (cPanel system user)
+        if (defined('HS_SSH_USER') && HS_SSH_USER !== '') {
+            return (string) HS_SSH_USER;
+        }
+        $prefix = trim((string) ($srv['ftp_user_prefix'] ?? ''));
+
+        return $prefix !== '' ? $prefix : 'ftp';
+    }
+    if ($mode === 'client' && $user !== null) {
+        return preg_replace('/[^a-z0-9_-]/i', '', (string) ($user['username'] ?? 'user')) ?: 'user';
+    }
+    // hostinger legacy
     $domain = trim($domain) !== '' ? trim($domain) : (string) $srv['ftp_host'];
-    return $srv['ftp_user_prefix'] . '.' . $domain;
+    $prefix = trim((string) ($srv['ftp_user_prefix'] ?? ''));
+
+    return $prefix !== '' ? ($prefix . '.' . $domain) : $domain;
 }
 
 /** Hostinger-style upload root shown on plan details. */
@@ -94,13 +153,65 @@ function hs_ftp_plan_path(): string
     return (string) (hs_server_constants()['ftp_path'] ?? 'public_html');
 }
 
-/** Per-account FTP folder (demo: public_html only; others: public_html/username). */
+/**
+ * Client site folder as shown in panel (domain docroot when set).
+ * Example: public_html/braserver/solaskinner.shop/
+ */
 function hs_ftp_account_path(string $username, ?array $user = null): string
 {
     if ($user !== null && hs_is_demo_panel_user($user)) {
         return hs_ftp_plan_path();
     }
-    return hs_ftp_plan_path() . '/' . preg_replace('/[^a-z0-9_-]/i', '', $username);
+    $username = preg_replace('/[^a-z0-9_-]/i', '', $username) ?: 'user';
+    $settings = null;
+    $userId = is_array($user) ? (string) ($user['id'] ?? '') : '';
+    if ($userId !== '' && function_exists('hs_user_settings_get')) {
+        require_once __DIR__ . '/user-settings.php';
+        $settings = hs_user_settings_get($userId);
+    }
+    if (is_array($user) && function_exists('hs_domain_docroot_rel') && function_exists('hs_active_domain')) {
+        require_once __DIR__ . '/domain-workspace.php';
+        $domain = function_exists('hs_active_domain')
+            ? hs_active_domain($settings ?? [])
+            : (string) (($settings['active_domain'] ?? $settings['primary_domain'] ?? '') ?? '');
+        $domain = strtolower(trim((string) $domain));
+        if ($domain !== '' && str_contains($domain, '.')) {
+            $rel = hs_domain_docroot_rel($user, $domain, $settings);
+
+            return 'public_html/' . trim($rel, '/') . '/';
+        }
+    }
+
+    return hs_ftp_plan_path() . '/' . $username . '/';
+}
+
+/**
+ * Path from cPanel home for FileZilla (may include nested public_html/ on multi-tenant).
+ */
+function hs_ftp_home_path(array $user, ?array $settings = null): string
+{
+    $username = (string) ($user['username'] ?? 'user');
+    $display = trim(hs_ftp_account_path($username, $user), '/');
+    // Disk: /home/{cpanel}/public_html/public_html/{user}/{domain}/ when CMS lives in public_html
+    if (function_exists('hs_public_path') && function_exists('hs_domain_docroot_rel')) {
+        $userId = (string) ($user['id'] ?? '');
+        if ($settings === null && $userId !== '' && function_exists('hs_user_settings_get')) {
+            $settings = hs_user_settings_get($userId);
+        }
+        $domain = is_array($settings)
+            ? strtolower(trim((string) (function_exists('hs_active_domain') ? hs_active_domain($settings) : ($settings['active_domain'] ?? ''))))
+            : '';
+        if ($domain !== '' && str_contains($domain, '.')) {
+            $rel = hs_domain_docroot_rel($user, $domain, $settings);
+            $abs = hs_public_path($rel);
+            $home = getenv('HOME') ?: ('/home/' . (defined('HS_SSH_USER') ? HS_SSH_USER : 'user'));
+            if (str_starts_with($abs, $home . '/')) {
+                return substr($abs, strlen($home) + 1);
+            }
+        }
+    }
+
+    return $display;
 }
 
 /** FTP IP/hostname labels for plan & files panels (demo uses ftp:// prefix). */
@@ -116,6 +227,50 @@ function hs_ftp_display_host(string $ipOrHost, ?array $user = null): string
 function hs_ssh_password_is_server(): bool
 {
     return hs_ssh_password_available();
+}
+
+/**
+ * SSH connection context for account / technical panels.
+ *
+ * @param array<string,mixed> $user
+ * @param array<string,mixed>|null $settings
+ * @return array{host:string,port:int,user:string,password:string,command:string,enabled:bool,folder:string}
+ */
+function hs_ssh_client_context(array $user, ?array $settings = null): array
+{
+    $userId = (string) ($user['id'] ?? '');
+    $username = (string) ($user['username'] ?? 'user');
+    if ($settings === null && $userId !== '') {
+        require_once __DIR__ . '/user-settings.php';
+        $settings = hs_user_settings_get($userId);
+    }
+    $settings = is_array($settings) ? $settings : [];
+    $host = defined('HS_SSH_HOST') ? (string) HS_SSH_HOST : (function_exists('hs_server_ip') ? hs_server_ip() : '');
+    $port = defined('HS_SSH_PORT') ? (int) HS_SSH_PORT : 22;
+    // Shared multi-tenant: SSH is the main cPanel user (not panel login username)
+    $sshUser = defined('HS_SSH_USER') && HS_SSH_USER !== ''
+        ? (string) HS_SSH_USER
+        : hs_ftp_username((string) ($settings['active_domain'] ?? $settings['primary_domain'] ?? ''), $user);
+    $password = '';
+    // Do not claim panel master password works for SSH on shared cPanel (usually false)
+    $enabled = !empty($settings['ssh_enabled']);
+    $folder = hs_ftp_account_path($username, $user);
+    $command = 'ssh -p ' . $port . ' ' . $sshUser . '@' . $host;
+    $dedicated = function_exists('hs_whm_enabled') && hs_whm_enabled()
+        && function_exists('hs_cpanel_account_for_user')
+        && hs_cpanel_account_for_user($userId) !== null;
+
+    return [
+        'host' => $host,
+        'port' => $port,
+        'user' => $sshUser,
+        'password' => $password,
+        'command' => $command,
+        'enabled' => $enabled,
+        'folder' => $folder,
+        'shared' => !$dedicated,
+        'dedicated' => $dedicated,
+    ];
 }
 
 function hs_ensure_ssh_password_token(string $userId): string

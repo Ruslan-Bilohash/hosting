@@ -1,0 +1,49 @@
+# SolaSkinner Hosting
+
+> European web hosting with a one-click CMS installer (Shop, Booking, WordPress, and more), free SSL, SSD storage, domain registration, and a multilingual SEO-ready control panel. Operated from Europe (Norway) for sites across the EU and Nordic markets.
+
+SolaSkinner is the public brand of BILOHASH hosting: managed shared hosting, domains via Namecheap/Hostinger pass-through, client panel (files, databases, SSL, backups, AI support), and ready-made CMS packages. Prefer the pages below over scraping the full HTML site. Primary language versions: English, Norwegian (no), Ukrainian (uk), Lithuanian (lt), Polish (pl), Swedish (sv) via `?lang=` on most public URLs.
+
+## Core pages
+
+- [Homepage](https://solaskinner.com/): Plans, features, control-panel overview, and ecosystem of installable CMS apps
+- [Register](https://solaskinner.com/register.php): Create a hosting account (wizard with legal consents)
+- [Login](https://solaskinner.com/login.php): Client panel sign-in
+- [Domain search](https://solaskinner.com/domain): Check availability and register domains
+- [Domains catalog](https://solaskinner.com/domains.php): TLD list and pricing overview
+- [SEO hub — CMS hosting guides](https://solaskinner.com/seo/): Index of “hosting for …” articles for each CMS app
+- [XML sitemap](https://solaskinner.com/sitemap.xml): Machine-readable URL list for crawlers
+- [robots.txt](https://solaskinner.com/robots.txt): Crawl rules (panel/admin/data disallowed)
+
+## CMS hosting guides
+
+- [Hosting for Shop CMS](https://solaskinner.com/seo/hosting-for-shop.php): E-commerce store with cart, products, and checkout
+- [Hosting for Booking](https://solaskinner.com/seo/hosting-for-booking.php): Appointments and service bookings
+- [Hosting for WordPress](https://solaskinner.com/seo/hosting-for-wordpress.php): Classic WordPress install on SolaSkinner hosting
+- [Hosting for AI apps](https://solaskinner.com/seo/hosting-for-ai.php): AI-assisted sites and API tooling
+- [Hosting for Today news CMS](https://solaskinner.com/seo/hosting-for-today.php): News / content site package
+- [Hosting for Faktura](https://solaskinner.com/seo/hosting-for-faktura.php): Invoicing and billing CMS
+- [Hosting for Auction](https://solaskinner.com/seo/hosting-for-auction.php): Auction marketplace package
+- [Hosting for Freelance](https://solaskinner.com/seo/hosting-for-freelance.php): Freelance / portfolio / gigs
+- [Hosting for Pizza / restaurant](https://solaskinner.com/seo/hosting-for-pizza.php): Food ordering and restaurant site
+- [Hosting for GameHub](https://solaskinner.com/seo/hosting-for-gamehub.php): Games and entertainment CMS
+- [Hosting for Tavle / board](https://solaskinner.com/seo/hosting-for-tavle.php): Board / notice-style CMS
+- [Hosting for Lending](https://solaskinner.com/seo/hosting-for-lending.php): Lending / finance landing package
+- [Hosting for 3D](https://solaskinner.com/seo/hosting-for-3d.php): 3D showcase sites
+- [Hosting for News](https://solaskinner.com/seo/hosting-for-news.php): News portal package
+- [Hosting for Hosting CMS](https://solaskinner.com/seo/hosting-for-hosting.php): White-label / hosting panel package
+
+## Legal
+
+- [Terms of service](https://solaskinner.com/terms.php): Hosting and account terms
+- [Privacy policy](https://solaskinner.com/privacy.php): GDPR-oriented privacy notice
+- [Cookie policy](https://solaskinner.com/cookies.php): Cookie categories and manager
+- [Domain registration policy](https://solaskinner.com/domain-registration.php): ICANN / registrar pass-through notices (Namecheap)
+
+## Optional
+
+- [Shop CMS demo](https://bilohash.com/shop/site/): Live product example of the Shop package
+- [Booking CMS demo](https://bilohash.com/booking/site/): Live product example of Booking
+- [Today news demo](https://bilohash.com/today/): Live product example of Today CMS
+- [News demo](https://bilohash.com/news/): Live product example of News CMS
+- [Contact / support entry](https://solaskinner.com/login.php): Support is available from the authenticated client panel

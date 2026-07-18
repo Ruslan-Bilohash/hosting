@@ -1,0 +1,129 @@
+/* Homepage performance / PageSpeed block */
+.hs-home-speed {
+  background: linear-gradient(180deg, #ecfdf5 0%, #f3faf6 55%, var(--hs-bg, #f3faf6) 100%);
+}
+.hs-home-speed-grid {
+  display: grid;
+  gap: 1.75rem;
+  align-items: center;
+}
+.hs-home-speed-visual {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+.hs-home-speed-shot {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--hs-border, #d8ebe2);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0f172a;
+  box-shadow: 0 12px 32px rgba(5, 150, 105, 0.1);
+  cursor: zoom-in;
+}
+.hs-home-speed-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  vertical-align: middle;
+}
+.hs-home-speed-scores {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+.hs-home-speed-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 1rem 0.75rem;
+  background: #fff;
+  border: 1px solid var(--hs-border, #d8ebe2);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(5, 150, 105, 0.06);
+}
+.hs-home-speed-ring {
+  --score: 96;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(#10b981 calc(var(--score) * 1%), #e2e8f0 0);
+  position: relative;
+}
+.hs-home-speed-ring::before {
+  content: "";
+  position: absolute;
+  inset: 0.45rem;
+  border-radius: 50%;
+  background: #fff;
+}
+.hs-home-speed-ring strong {
+  position: relative;
+  z-index: 1;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #047857;
+}
+.hs-home-speed-score-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--hs-muted, #5b6f66);
+  text-align: center;
+  line-height: 1.25;
+}
+.hs-home-speed-copy h3 {
+  margin: 0 0 0.65rem;
+  font-size: 1.2rem;
+}
+.hs-home-speed-copy > p {
+  margin: 0 0 1rem;
+  color: var(--hs-muted, #5b6f66);
+  line-height: 1.55;
+}
+.hs-home-speed-points {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+.hs-home-speed-points li {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+.hs-home-speed-points i {
+  color: #059669;
+  margin-top: 0.2rem;
+}
+.hs-home-speed-note {
+  margin: 0 0 1.1rem;
+  font-size: 0.85rem;
+  color: var(--hs-muted, #5b6f66);
+  line-height: 1.45;
+}
+@media (min-width: 768px) {
+  .hs-home-speed-grid {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 2rem;
+  }
+  .hs-home-speed-scores {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (min-width: 900px) and (max-width: 1099px) {
+  .hs-home-speed-scores {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

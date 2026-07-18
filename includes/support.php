@@ -190,6 +190,9 @@ function hs_support_render_editor(string $id, string $label, string $placeholder
         . '<span class="hs-support-editor-label">' . hs_h($label) . '</span>'
         . '<div class="' . $cls . '" data-support-editor="' . hs_h($id) . '" data-placeholder="' . hs_h($placeholder) . '">'
         . '<div class="hs-support-quill-mount" data-support-quill-body></div>'
+        . '<textarea class="hs-support-fallback-ta" data-support-fallback rows="'
+        . ($size === 'compact' ? '4' : ($size === 'draft' ? '3' : '8'))
+        . '" placeholder="' . hs_h($placeholder) . '"></textarea>'
         . '</div></div>';
 }
 

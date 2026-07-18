@@ -5,23 +5,52 @@ $panel_active = 'account';
 require dirname(__DIR__) . '/includes/panel-bootstrap.php';
 require_once dirname(__DIR__) . '/includes/master-password.php';
 require_once dirname(__DIR__) . '/includes/client-identity.php';
+require_once dirname(__DIR__) . '/includes/mail-settings.php';
+require_once dirname(__DIR__) . '/includes/plan-specs.php';
+require_once dirname(__DIR__) . '/includes/client-ftp-onboard.php';
 
 $page_title = $t['account_title'] ?? 'Account';
 $panel_tip_key = 'account';
 
 $error = '';
 $success = '';
-$generatedPass = '';
 $userId = (string) ($user['id'] ?? '');
-$masterPass = hs_master_password_plain($userId);
-$services = hs_master_password_services($t);
 $displayName = hs_client_display_name($user);
 $initial = mb_strtoupper(mb_substr($displayName, 0, 1, 'UTF-8'), 'UTF-8');
-$planId = (string) ($user['plan'] ?? 'starter');
-$planLabel = $t['plan_' . $planId] ?? $planId;
-$folderRel = 'public_html/' . preg_replace('/[^a-z0-9_-]/i', '', (string) ($user['username'] ?? 'user')) . '/';
+$planId = hs_plan_normalize_id((string) ($user['plan'] ?? 'starter'));
+$plan = hs_plan($planId);
+$planLabel = hs_plan_panel_label($planId, $t);
+$accountUser = (string) ($user['username'] ?? 'user');
+$domain = (string) ($hs_active_domain ?? hs_plan_display_domain($user, $hs_user_settings));
+// Real per-client FTP (cPanel jail) + display folder
+$ftpCred = hs_client_ftp_credentials($user);
+$folderPath = rtrim(hs_ftp_account_path($accountUser, $user), '/') . '/';
+$ftpHomePath = (string) ($ftpCred['homedir'] ?? '');
+$ftpUser = (string) ($ftpCred['login'] ?? hs_client_ftp_login($user));
+$ftpHostName = (string) ($ftpCred['host'] ?? ('ftp.' . hs_default_primary_domain()));
+$ftpHost = (string) ($ftpCred['host_ip'] ?? (function_exists('hs_server_ip') ? hs_server_ip() : ''));
+$ftpPort = (int) ($ftpCred['port'] ?? 21);
+$sftpPort = (int) ($ftpCred['sftp_port'] ?? (defined('HS_SSH_PORT') ? HS_SSH_PORT : 22));
+$ftpOk = !empty($ftpCred['ok']);
+$folderTilde = $ftpHomePath !== '' ? ('~/' . ltrim($ftpHomePath, '/')) : ('~/' . trim($folderPath, '/'));
+$ssh = hs_ssh_client_context($user, $hs_user_settings);
+// SFTP uses same login/password as FTP jail (no shell on shared; secure file transfer)
+$sharedHosting = empty($ftpOk) || !empty($ssh['shared']);
 $clientNumber = hs_client_number($user);
 $supportEmail = hs_client_support_email($user);
+$mailSettings = hs_mail_service_settings($domain !== '' ? $domain : null, $hs_user_settings);
+$filesUrl = hs_url(hs_panel_path('files.php'));
+$services = hs_master_password_services($t);
+foreach ($services as &$svc) {
+    if (($svc['id'] ?? '') === 'ftp') {
+        $svc['desc'] = str_replace('{path}', $folderPath, (string) ($t['account_service_ftp_desc'] ?? $svc['desc']));
+    } elseif (($svc['id'] ?? '') === 'ssh') {
+        $svc['desc'] = str_replace('{folder}', $folderTilde, (string) ($t['account_service_ssh_desc'] ?? $svc['desc']));
+    }
+}
+unset($svc);
+$mailboxes = is_array($hs_user_settings['mailboxes'] ?? null) ? $hs_user_settings['mailboxes'] : [];
+$mailboxCount = count($mailboxes);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hs_csrf_verify($_POST['csrf'] ?? null)) {
@@ -35,7 +64,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
         if ($res['ok']) {
             $success = $t['account_master_pass_changed'] ?? 'Password updated for panel, FTP and SSH.';
-            $masterPass = (string) ($_POST['new_pass'] ?? '');
             $user = hs_client_user() ?? $user;
         } else {
             $error = hs_master_password_error_message((string) ($res['error'] ?? ''), $t);
@@ -43,8 +71,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (isset($_POST['generate_master_pass'])) {
         $res = hs_master_password_generate($user, (string) ($_POST['current_pass_gen'] ?? ''));
         if ($res['ok']) {
-            $generatedPass = (string) ($res['password'] ?? '');
-            $masterPass = $generatedPass;
             $success = $t['account_master_pass_generated'] ?? 'New password generated for all services.';
             $user = hs_client_user() ?? $user;
         } else {
@@ -53,8 +79,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$passVisible = $generatedPass !== '' ? $generatedPass : $masterPass;
-$hasPass = $passVisible !== '';
+$passFlash = hs_master_password_consume_flash($userId);
+$hasPass = hs_master_password_has_stored($userId) || $passFlash !== null;
+
+$incomingTable = hs_mail_render_server_table($mailSettings['incoming'], $t);
+$outgoingTable = hs_mail_render_server_table($mailSettings['outgoing'], $t);
+$webmailLegacy = $mailSettings['webmail_legacy_url'];
+$emailManageUrl = hs_url(hs_panel_path('email.php'));
 
 ob_start();
 ?>
@@ -62,6 +93,21 @@ ob_start();
 <?php if ($error !== ''): ?><div class="hs-alert hs-alert-error"><?= hs_h($error) ?></div><?php endif; ?>
 
 <div class="hs-account-page" data-hs-account>
+  <p class="hs-alert hs-account-scope"><i class="fa-solid fa-user-shield"></i> <?= hs_h(str_replace(
+      ['{path}', '{user}'],
+      [$folderPath, $accountUser],
+      $t['account_scope_hint'] ?? 'Your website folder: {path}. Panel login is «{user}». Prefer File Manager for uploads.'
+  )) ?></p>
+  <?php if ($ftpOk): ?>
+  <p class="hs-alert hs-alert-success" style="margin-top:.5rem"><i class="fa-solid fa-circle-check"></i>
+    <?= hs_h($t['account_ftp_ready_note'] ?? 'Your FTP/SFTP login is ready and jailed to your site folder only.') ?>
+  </p>
+  <?php elseif (!empty($ftpCred['error'])): ?>
+  <p class="hs-alert hs-alert-error" style="margin-top:.5rem"><i class="fa-solid fa-triangle-exclamation"></i>
+    <?= hs_h($t['account_ftp_error'] ?? 'Could not create FTP account.') ?>
+    <code><?= hs_h((string) $ftpCred['error']) ?></code>
+  </p>
+  <?php endif; ?>
   <header class="hs-account-hero">
     <div class="hs-account-hero-main">
       <div class="hs-account-avatar" aria-hidden="true"><?= hs_h($initial) ?></div>
@@ -103,7 +149,8 @@ ob_start();
         </div>
         <div class="hs-account-field">
           <span class="hs-account-field-label"><?= hs_h($t['account_username'] ?? 'Username') ?></span>
-          <div class="hs-account-field-value"><i class="fa-solid fa-user"></i> <?= hs_h($user['username'] ?? '') ?></div>
+          <div class="hs-account-field-value"><i class="fa-solid fa-user"></i> <?= hs_h($accountUser) ?></div>
+          <p class="hp-muted hs-account-field-hint"><?= hs_h($t['account_panel_login_hint'] ?? 'Used to sign in to this control panel.') ?></p>
         </div>
         <div class="hs-account-field">
           <span class="hs-account-field-label"><?= hs_h($t['account_plan'] ?? 'Plan') ?></span>
@@ -113,12 +160,43 @@ ob_start();
           </div>
         </div>
         <div class="hs-account-field">
-          <span class="hs-account-field-label"><?= hs_h($t['account_folder'] ?? 'Site folder') ?></span>
-          <div class="hs-account-field-value hs-account-mono"><i class="fa-solid fa-folder-open"></i> <?= hs_h($folderRel) ?></div>
+          <span class="hs-account-field-label"><?= hs_h($t['domains_primary'] ?? 'Domain') ?></span>
+          <div class="hs-account-field-value"><i class="fa-solid fa-globe"></i> <?= hs_h($domain !== '' ? $domain : '—') ?></div>
         </div>
         <div class="hs-account-field">
-          <span class="hs-account-field-label"><?= hs_h($t['domains_primary'] ?? 'Domain') ?></span>
-          <div class="hs-account-field-value"><?= hs_h((string) ($hs_user_settings['primary_domain'] ?? '—')) ?></div>
+          <span class="hs-account-field-label"><?= hs_h($t['account_folder'] ?? 'Site folder') ?></span>
+          <div class="hs-account-field-value hs-account-mono"><i class="fa-solid fa-folder-open"></i> <code id="account-folder-path"><?= hs_h($folderPath) ?></code></div>
+          <p class="hp-muted hs-account-field-hint"><?= hs_h($t['account_folder_hint'] ?? 'Your website files (also the FTP jail).') ?></p>
+        </div>
+        <div class="hs-account-field">
+          <span class="hs-account-field-label"><?= hs_h($t['account_ftp_host'] ?? 'FTP / SFTP host') ?></span>
+          <div class="hs-account-field-value hs-account-mono">
+            <code id="account-ftp-host"><?= hs_h($ftpHostName) ?></code>
+            <?php if ($ftpHost !== ''): ?>
+            <span class="hp-muted"> · IP <code><?= hs_h($ftpHost) ?></code></span>
+            <?php endif; ?>
+          </div>
+          <p class="hp-muted hs-account-field-hint">
+            FTP <?= hs_h((string) $ftpPort) ?>
+            · SFTP <?= hs_h((string) $sftpPort) ?>
+            · <?= hs_h($t['account_ftp_protocol_hint'] ?? 'Same login for FTP and SFTP (FileZilla protocol SFTP).') ?>
+          </p>
+        </div>
+        <div class="hs-account-field">
+          <span class="hs-account-field-label"><?= hs_h($t['account_ftp_user'] ?? 'FTP / SFTP username') ?></span>
+          <div class="hs-account-field-value hs-account-mono"><i class="fa-solid fa-server"></i> <code id="account-ftp-user"><?= hs_h($ftpUser) ?></code></div>
+          <p class="hp-muted hs-account-field-hint"><?= hs_h($t['account_ftp_user_hint'] ?? 'Only your site folder is visible after login.') ?></p>
+        </div>
+        <div class="hs-account-field">
+          <span class="hs-account-field-label"><?= hs_h($t['account_ftp_path'] ?? 'Path after login') ?></span>
+          <div class="hs-account-field-value hs-account-mono"><code id="account-ftp-path">/</code></div>
+          <p class="hp-muted hs-account-field-hint"><?= hs_h($t['account_ftp_path_hint'] ?? 'You land in your site root (jailed). Server path:') ?>
+            <code><?= hs_h($ftpHomePath !== '' ? $ftpHomePath : $folderPath) ?></code></p>
+        </div>
+        <div class="hs-account-access-links hp-actions">
+          <a href="<?= hs_h($filesUrl) ?>" class="hs-btn hs-btn-primary hp-dash-btn-sm"><i class="fa-solid fa-folder-open"></i> <?= hs_h($t['account_link_files'] ?? 'File Manager') ?></a>
+          <a href="<?= hs_h(hs_url(hs_panel_path('files.php'), ['tab' => 'ftp'])) ?>" class="hs-btn hs-btn-ghost hp-dash-btn-sm"><i class="fa-solid fa-network-wired"></i> <?= hs_h($t['account_link_ftp'] ?? 'FTP details') ?></a>
+          <a href="<?= hs_h(hs_url(hs_panel_tab_href('domains', 'overview'))) ?>" class="hs-btn hs-btn-ghost hp-dash-btn-sm"><i class="fa-solid fa-globe"></i> <?= hs_h($t['nav_domains'] ?? 'Domains') ?></a>
         </div>
       </div>
     </section>
@@ -127,22 +205,11 @@ ob_start();
       <div class="hs-account-master-head">
         <div>
           <h2 class="hs-account-card-title"><i class="fa-solid fa-shield-halved"></i> <?= hs_h($t['account_master_pass_title'] ?? 'Main password') ?></h2>
-          <p class="hs-account-master-desc"><?= hs_h($t['account_master_pass_desc'] ?? 'One password for panel login, FTP and SSH.') ?></p>
+          <p class="hs-account-master-desc"><?= hs_h($t['account_master_pass_desc'] ?? 'One password for panel login, FTP and SFTP (your jailed site account).') ?></p>
         </div>
         <?php if ($hasPass): ?>
         <div class="hs-account-pass-pill" id="account-pass-pill">
-          <code id="account-pass-value"><?= hs_h($passVisible) ?></code>
-          <button type="button" class="hs-btn hs-btn-ghost hp-dash-btn-sm" data-account-pass-toggle
-            data-secret="<?= hs_h($passVisible) ?>"
-            data-label-show="<?= hs_h($t['account_master_pass_show'] ?? 'Show') ?>"
-            data-label-hide="<?= hs_h($t['account_master_pass_hide'] ?? 'Hide') ?>">
-            <?= hs_h($t['account_master_pass_hide'] ?? 'Hide') ?>
-          </button>
-          <button type="button" class="hs-btn hs-btn-ghost hp-dash-btn-sm" data-copy-secret="account-pass-value"
-            data-secret="<?= hs_h($passVisible) ?>"
-            data-copied-label="<?= hs_h($t['account_master_pass_copied'] ?? 'Copied') ?>">
-            <i class="fa-solid fa-copy"></i>
-          </button>
+          <?= hs_master_password_secret_ui('account-pass-value', $t, $passFlash, ['class' => 'hs-account-pass-pill-inner']) ?>
         </div>
         <?php endif; ?>
       </div>
@@ -216,24 +283,76 @@ ob_start();
     </section>
   </div>
 
+  <section class="hs-account-card hs-account-mail">
+    <div class="hs-account-mail-head">
+      <div>
+        <h2 class="hs-account-card-title"><i class="fa-solid fa-envelope"></i> <?= hs_h($t['account_mail_title'] ?? 'Mail service') ?></h2>
+        <p class="hp-muted hs-account-mail-desc"><?= hs_h($t['account_mail_desc'] ?? '') ?></p>
+      </div>
+      <div class="hp-actions hs-account-mail-actions">
+        <a href="<?= hs_h($mailSettings['webmail_url']) ?>" class="hs-btn hs-btn-primary">
+          <i class="fa-solid fa-inbox"></i> <?= hs_h($t['webmail_title'] ?? 'Mail') ?>
+        </a>
+        <?php if (!empty($mailSettings['webmail_roundcube_url'])): ?>
+        <a href="<?= hs_h($mailSettings['webmail_roundcube_url']) ?>" target="_blank" rel="noopener" class="hs-btn hs-btn-ghost">
+          <i class="fa-solid fa-envelope-open"></i> <?= hs_h($t['email_open_roundcube'] ?? 'Roundcube') ?>
+        </a>
+        <?php endif; ?>
+        <a href="<?= hs_h($emailManageUrl) ?>" class="hs-btn hs-btn-ghost">
+          <i class="fa-solid fa-inbox"></i> <?= hs_h($t['account_mail_manage'] ?? 'Manage mailboxes') ?>
+        </a>
+      </div>
+    </div>
+
+    <div class="hs-account-mail-grid">
+      <div class="hs-account-mail-block">
+        <h3 class="hs-account-mail-subtitle"><?= hs_h($t['account_mail_overview'] ?? 'Overview') ?></h3>
+        <?= hs_render_kv_table([
+            [$t['domains_primary'] ?? 'Domain', '<strong>' . hs_h($domain) . '</strong>'],
+            ['MX', '<code>' . hs_h($mailSettings['mx']) . '</code>'],
+            [$t['email_webmail_panel'] ?? 'Panel mail', '<a href="' . hs_h($mailSettings['webmail_url']) . '"><code>' . hs_h($mailSettings['webmail_url']) . '</code></a>'],
+            [$t['account_mail_mailboxes'] ?? 'Mailboxes', '<strong>' . hs_h((string) $mailboxCount) . '</strong>'],
+        ]) ?>
+        <?php if ($webmailLegacy !== null && ($mailSettings['webmail_roundcube_url'] ?? null) !== $webmailLegacy): ?>
+        <p class="hp-muted hs-account-mail-legacy">
+          <i class="fa-solid fa-circle-info"></i>
+          <?= hs_h(str_replace('{url}', $webmailLegacy, $t['email_webmail_legacy_note'] ?? '')) ?>
+          <a href="<?= hs_h(hs_url(hs_panel_path('security.php'), ['tab' => 'ssl'])) ?>"><?= hs_h($t['email_webmail_ssl_fix'] ?? '') ?></a>
+        </p>
+        <?php endif; ?>
+      </div>
+
+      <div class="hs-account-mail-block">
+        <h3 class="hs-account-mail-subtitle"><i class="fa-solid fa-arrow-down"></i> <?= hs_h($t['account_mail_incoming'] ?? 'Incoming mail') ?></h3>
+        <?= $incomingTable ?>
+      </div>
+
+      <div class="hs-account-mail-block">
+        <h3 class="hs-account-mail-subtitle"><i class="fa-solid fa-arrow-up"></i> <?= hs_h($t['account_mail_outgoing'] ?? 'Outgoing mail (SMTP)') ?></h3>
+        <?= $outgoingTable ?>
+        <p class="hp-muted hs-account-mail-auth"><i class="fa-solid fa-key"></i> <?= hs_h($t['account_mail_auth_hint'] ?? '') ?></p>
+      </div>
+    </div>
+  </section>
+
   <section class="hs-account-limits">
     <h2 class="hs-account-card-title"><i class="fa-solid fa-gauge-high"></i> <?= hs_h($t['nav_plan_details'] ?? 'Plan limits') ?></h2>
     <div class="hs-account-limits-grid">
       <div class="hs-account-limit">
         <span><?= hs_h($t['plan_websites_limit'] ?? 'Sites') ?></span>
-        <strong><?= hs_h((string) ($hs_plan['sites'] ?? 1)) ?></strong>
+        <strong><?= hs_h(hs_plan_sites_label($plan, $t)) ?></strong>
       </div>
       <div class="hs-account-limit">
         <span><?= hs_h($t['plan_storage_limit'] ?? 'Storage') ?></span>
-        <strong><?= hs_h(hs_plan_storage_label($hs_plan, $t)) ?></strong>
+        <strong><?= hs_h(hs_plan_storage_label($plan, $t)) ?></strong>
+      </div>
+      <div class="hs-account-limit">
+        <span><?= hs_h($t['plan_databases_limit'] ?? 'Databases') ?></span>
+        <strong><?= hs_h((string) (int) ($plan['databases'] ?? hs_user_database_limit($user))) ?></strong>
       </div>
       <div class="hs-account-limit">
         <span><?= hs_h($t['plan_ram'] ?? 'RAM') ?></span>
-        <strong><?= hs_h((string) ($hs_plan['ram_mb'] ?? '')) ?> <?= hs_h($t['plan_unit_mb'] ?? 'MB') ?></strong>
-      </div>
-      <div class="hs-account-limit">
-        <span><?= hs_h($t['domains_primary'] ?? 'Domain') ?></span>
-        <strong><?= hs_h((string) ($hs_user_settings['primary_domain'] ?? '—')) ?></strong>
+        <strong><?= hs_h((string) (int) ($plan['ram_mb'] ?? 0)) ?> <?= hs_h($t['plan_unit_mb'] ?? 'MB') ?></strong>
       </div>
     </div>
   </section>

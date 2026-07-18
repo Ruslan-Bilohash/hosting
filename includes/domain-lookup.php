@@ -9,6 +9,7 @@ function hs_domain_rdap_bases(): array
         'net' => 'https://rdap.verisign.com/net/v1/domain/',
         'org' => 'https://rdap.publicinterestregistry.org/rdap/domain/',
         'eu' => 'https://rdap.eurid.eu/domain/',
+        'se' => 'https://rdap.iis.se/domain/',
         'no' => 'https://rdap.norid.no/domain/',
         'uk' => 'https://rdap.nominet.uk/uk/domain/',
         'co.uk' => 'https://rdap.nominet.uk/uk/domain/',
@@ -65,18 +66,37 @@ function hs_domain_whois_config(): array
             'available' => ['no match for'],
             'taken' => ['domain name:'],
         ],
+        'se' => [
+            'server' => 'whois.iis.se',
+            'available' => ['not found', 'no match'],
+            'taken' => ['domain name:'],
+        ],
+        'pl' => [
+            'server' => 'whois.dns.pl',
+            'available' => ['no information available', 'not registered'],
+            'taken' => ['domain name:'],
+        ],
     ];
+}
+
+function hs_domain_lookup_timeouts(): array
+{
+    // Keep under reverse-proxy gateway budgets (often ~30s).
+    return ['http' => 4, 'connect' => 2, 'whois' => 2];
 }
 
 function hs_domain_http_get(string $url, int $timeout = 15): array
 {
+    $limits = hs_domain_lookup_timeouts();
+    $timeout = min($timeout, (int) $limits['http']);
+    $connect = (int) $limits['connect'];
     if (function_exists('curl_init')) {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_TIMEOUT => $timeout,
-            CURLOPT_CONNECTTIMEOUT => 8,
+            CURLOPT_CONNECTTIMEOUT => $connect,
             CURLOPT_USERAGENT => 'BILOHASH-Hosting-CMS/1.0 (+https://bilohash.com/hosting)',
             CURLOPT_HTTPHEADER => ['Accept: application/rdap+json, application/json'],
         ]);
@@ -122,11 +142,12 @@ function hs_domain_socket_query(string $host, int $port, string $payload): ?stri
 {
     $errno = 0;
     $errstr = '';
-    $fp = @fsockopen($host, $port, $errno, $errstr, 12);
+    $whoisTimeout = (int) (hs_domain_lookup_timeouts()['whois'] ?? 6);
+    $fp = @fsockopen($host, $port, $errno, $errstr, $whoisTimeout);
     if ($fp === false) {
         return null;
     }
-    stream_set_timeout($fp, 12);
+    stream_set_timeout($fp, $whoisTimeout);
     fwrite($fp, $payload);
     $out = '';
     while (!feof($fp)) {
@@ -201,25 +222,186 @@ function hs_domain_whois_available(string $domain, string $tld): ?bool
 }
 
 /**
+ * @param list<array{domain:string,tld:string}> $items
+ * @return array<string, array{ok:bool,available?:bool,source?:string,error?:string}>
+ */
+function hs_domain_rdap_batch_available(array $items): array
+{
+    $bases = hs_domain_rdap_bases();
+    $out = [];
+    $pending = [];
+    foreach ($items as $item) {
+        $domain = strtolower((string) ($item['domain'] ?? ''));
+        $tld = strtolower((string) ($item['tld'] ?? ''));
+        if ($domain === '' || $tld === '' || !isset($bases[$tld])) {
+            continue;
+        }
+        $pending[$domain] = $bases[$tld] . rawurlencode($domain);
+    }
+    if ($pending === [] || !function_exists('curl_multi_init')) {
+        foreach ($pending as $domain => $url) {
+            $tld = '';
+            foreach ($items as $item) {
+                if (strtolower((string) ($item['domain'] ?? '')) === $domain) {
+                    $tld = strtolower((string) ($item['tld'] ?? ''));
+                    break;
+                }
+            }
+            $rdap = hs_domain_rdap_available($domain, $tld);
+            if ($rdap !== null) {
+                $out[$domain] = ['ok' => true, 'available' => $rdap, 'source' => 'rdap'];
+            }
+        }
+        return $out;
+    }
+
+    $limits = hs_domain_lookup_timeouts();
+    $mh = curl_multi_init();
+    $handles = [];
+    foreach ($pending as $domain => $url) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT => (int) $limits['http'],
+            CURLOPT_CONNECTTIMEOUT => (int) $limits['connect'],
+            CURLOPT_USERAGENT => 'BILOHASH-Hosting-CMS/1.0 (+https://bilohash.com/hosting)',
+            CURLOPT_HTTPHEADER => ['Accept: application/rdap+json, application/json'],
+        ]);
+        curl_multi_add_handle($mh, $ch);
+        $handles[$domain] = $ch;
+    }
+
+    $running = null;
+    do {
+        $status = curl_multi_exec($mh, $running);
+        if ($running > 0) {
+            curl_multi_select($mh, 0.25);
+        }
+    } while ($running > 0 && $status === CURLM_OK);
+
+    foreach ($handles as $domain => $ch) {
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        if ($code === 404) {
+            $out[$domain] = ['ok' => true, 'available' => true, 'source' => 'rdap'];
+        } elseif ($code === 200) {
+            $out[$domain] = ['ok' => true, 'available' => false, 'source' => 'rdap'];
+        }
+        curl_multi_remove_handle($mh, $ch);
+        curl_close($ch);
+    }
+    curl_multi_close($mh);
+
+    return $out;
+}
+
+/**
  * Real registry lookup (RDAP, then WHOIS).
  *
  * @return array{ok:bool,available?:bool,source?:string,error?:string}
  */
 function hs_domain_registry_lookup(string $domain, string $tld): array
 {
-    if ($tld === 'lt') {
-        $das = hs_domain_lt_das_available($domain);
-        if ($das !== null) {
-            return ['ok' => true, 'available' => $das, 'source' => 'das'];
+    $batch = hs_domain_registry_lookup_batch([['domain' => $domain, 'tld' => $tld]]);
+    return $batch[$domain] ?? ['ok' => false, 'error' => 'lookup_failed'];
+}
+
+/**
+ * @param list<array{domain:string,tld:string}> $items
+ * @return array<string, array{ok:bool,available?:bool,source?:string,error?:string}>
+ */
+function hs_domain_registry_lookup_batch(array $items): array
+{
+    require_once __DIR__ . '/providers/namecheap-api.php';
+    $out = [];
+    $needRegistry = [];
+
+    $ncDomains = [];
+    foreach ($items as $item) {
+        $domain = strtolower((string) ($item['domain'] ?? ''));
+        $tld = strtolower((string) ($item['tld'] ?? ''));
+        if ($domain === '' || $tld === '') {
+            continue;
+        }
+        if (!hs_namecheap_skip_live_api() && hs_domain_tld_registrable($tld)) {
+            $ncDomains[] = $domain;
+        }
+        $needRegistry[] = ['domain' => $domain, 'tld' => $tld];
+    }
+
+    if ($ncDomains !== []) {
+        $nc = hs_namecheap_check_domains($ncDomains);
+        if ($nc['ok']) {
+            foreach ($nc['results'] ?? [] as $row) {
+                $domain = strtolower((string) ($row['domain'] ?? ''));
+                if ($domain === '') {
+                    continue;
+                }
+                $out[$domain] = [
+                    'ok' => true,
+                    'available' => (bool) ($row['available'] ?? false),
+                    'source' => 'namecheap',
+                ];
+            }
         }
     }
-    $rdap = hs_domain_rdap_available($domain, $tld);
-    if ($rdap !== null) {
-        return ['ok' => true, 'available' => $rdap, 'source' => 'rdap'];
+
+    $pending = [];
+    foreach ($needRegistry as $item) {
+        $domain = strtolower((string) $item['domain']);
+        if (isset($out[$domain])) {
+            continue;
+        }
+        $pending[] = $item;
     }
-    $whois = hs_domain_whois_available($domain, $tld);
-    if ($whois !== null) {
-        return ['ok' => true, 'available' => $whois, 'source' => 'whois'];
+
+    $ltPending = [];
+    $rdapPending = [];
+    foreach ($pending as $item) {
+        $domain = strtolower((string) $item['domain']);
+        $tld = strtolower((string) $item['tld']);
+        if ($tld === 'lt') {
+            $ltPending[] = $item;
+            continue;
+        }
+        $rdapPending[] = $item;
     }
-    return ['ok' => false, 'error' => 'lookup_failed'];
+
+    foreach (hs_domain_rdap_batch_available($rdapPending) as $domain => $row) {
+        $out[$domain] = $row;
+    }
+
+    foreach ($ltPending as $item) {
+        $domain = strtolower((string) $item['domain']);
+        if (isset($out[$domain])) {
+            continue;
+        }
+        $das = hs_domain_lt_das_available($domain);
+        if ($das !== null) {
+            $out[$domain] = ['ok' => true, 'available' => $das, 'source' => 'das'];
+        }
+    }
+
+    // Sequential WHOIS is slow — hard budget so domain-check never hits 504 gateway.
+    $whoisStart = microtime(true);
+    $whoisBudget = 5.0;
+    foreach ($pending as $item) {
+        $domain = strtolower((string) $item['domain']);
+        $tld = strtolower((string) $item['tld']);
+        if (isset($out[$domain])) {
+            continue;
+        }
+        if ((microtime(true) - $whoisStart) > $whoisBudget) {
+            $out[$domain] = ['ok' => false, 'error' => 'lookup_timeout'];
+            continue;
+        }
+        $whois = hs_domain_whois_available($domain, $tld);
+        if ($whois !== null) {
+            $out[$domain] = ['ok' => true, 'available' => $whois, 'source' => 'whois'];
+            continue;
+        }
+        $out[$domain] = ['ok' => false, 'error' => 'lookup_failed'];
+    }
+
+    return $out;
 }

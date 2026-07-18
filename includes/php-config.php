@@ -185,14 +185,78 @@ function hs_php_version_ea_handler(string $version): string
     return 'ea-php' . $v;
 }
 
+/**
+ * Per-account .htaccess PHP selector.
+ *
+ * Hostinger/cPanel often needs application/x-httpd-ea-php82___lsphp (triple underscore).
+ * A bare ea-php82 handler returns HTTP 403 on many hosts — so by default we do NOT
+ * force AddHandler (MultiPHP + .user.ini control the version). Optional override via
+ * HS_PHP_FORCE_EA_HANDLER=1 in config.local.php for hosts that need it.
+ */
 function hs_php_htaccess_block(string $version): string
 {
     $minor = hs_php_normalize_version($version);
+    $force = defined('HS_PHP_FORCE_EA_HANDLER') && HS_PHP_FORCE_EA_HANDLER;
+    if (!$force) {
+        return "# Hosting CMS — PHP {$minor} (version via MultiPHP / .user.ini; no AddHandler — avoids 403)\n"
+            . "Options -Indexes\n"
+            . "DirectoryIndex index.php index.html\n";
+    }
     $handler = hs_php_version_ea_handler($minor);
+    // Hostinger LiteSpeed convention
+    $lsphp = $handler . '___lsphp';
+
     return "# Hosting CMS — PHP {$minor}\n"
         . "<IfModule mime_module>\n"
-        . "  AddHandler application/x-httpd-{$handler} .php .php8 .phtml\n"
-        . "</IfModule>\n";
+        . "  AddHandler application/x-httpd-{$lsphp} .php .php8 .phtml\n"
+        . "</IfModule>\n"
+        . "Options -Indexes\n"
+        . "DirectoryIndex index.php index.html\n";
+}
+
+/**
+ * Remove broken AddHandler lines that cause HTTP 403 on shared hosts.
+ * Safe to call on every panel boot for the account folder.
+ */
+function hs_php_repair_account_htaccess(string $username): void
+{
+    $username = preg_replace('/[^a-z0-9_-]/i', '', $username) ?: '';
+    if ($username === '') {
+        return;
+    }
+    $file = hs_public_path($username) . '/.htaccess';
+    if (!is_file($file) || !is_readable($file)) {
+        return;
+    }
+    $raw = (string) file_get_contents($file);
+    if ($raw === '' || !str_contains($raw, 'AddHandler')) {
+        // Ensure DirectoryIndex at least
+        if (!str_contains($raw, 'DirectoryIndex') && !str_contains($raw, 'Options')) {
+            @file_put_contents($file, "Options -Indexes\nDirectoryIndex index.php index.html\n" . $raw);
+
+            return;
+        }
+
+        return;
+    }
+    // Strip Hosting CMS PHP AddHandler blocks (old broken form)
+    $clean = preg_replace(
+        '/# Hosting CMS — PHP[\s\S]*?<\/IfModule>\s*/i',
+        '',
+        $raw
+    ) ?? $raw;
+    // Also remove orphan AddHandler ea-php lines
+    $clean = preg_replace(
+        '/^\s*AddHandler\s+application\/x-httpd-ea-php[^\n]*\n/mi',
+        '',
+        $clean
+    ) ?? $clean;
+    if (!str_contains($clean, 'DirectoryIndex')) {
+        $clean = "Options -Indexes\nDirectoryIndex index.php index.html\n" . ltrim($clean);
+    }
+    if ($clean !== $raw) {
+        @file_put_contents($file, $clean);
+    }
 }
 
 /** @return array<string, string> */
@@ -288,13 +352,25 @@ function hs_php_merge_htaccess(string $username, string $phpVersion): bool
     }
     $file = $base . '/.htaccess';
     $existing = is_file($file) ? (file_get_contents($file) ?: '') : '';
+    // Strip previous Hosting CMS PHP blocks (with or without IfModule AddHandler)
+    $existing = preg_replace(
+        '/# Hosting CMS — PHP[\s\S]*?(?=\n# |\nOptions|\nDirectoryIndex|\nRewrite|\n<|\z)/m',
+        '',
+        $existing
+    ) ?? $existing;
     $existing = preg_replace(
         '/# Hosting CMS — PHP[^\n]*\n<IfModule mime_module>[\s\S]*?<\/IfModule>\n?/m',
         '',
         $existing
     ) ?? $existing;
+    $existing = preg_replace(
+        '/^\s*AddHandler\s+application\/x-httpd-ea-php[^\n]*\n/mi',
+        '',
+        $existing
+    ) ?? $existing;
     $block = hs_php_htaccess_block($phpVersion);
-    $content = $block . (trim($existing) !== '' ? "\n" . ltrim($existing) : "Options -Indexes\n");
+    $rest = trim($existing);
+    $content = $block . ($rest !== '' ? "\n" . $rest . "\n" : '');
     return file_put_contents($file, $content, LOCK_EX) !== false;
 }
 
@@ -459,6 +535,8 @@ function hs_php_sync_from_server(string $userId, string $username): array
 function hs_ensure_php_config(string $userId, string $username): void
 {
     hs_php_migrate_ini_file($username);
+    // Fix 403 from broken ea-php AddHandler written by older panel versions
+    hs_php_repair_account_htaccess($username);
     $path = hs_php_user_ini_path($username);
     if (!is_file($path)) {
         $settings = hs_user_settings_get($userId);

@@ -1,0 +1,43 @@
+{
+  "enabled": false,
+  "host": "host15.example.com",
+  "port": 2087,
+  "use_ssl": true,
+  "api_user": "reseller",
+  "api_token": "",
+  "bridge_url": "",
+  "bridge_secret": "",
+  "max_accounts": 25,
+  "max_disk_gb": 30,
+  "reserved_disk_gb": 0,
+  "warn_accounts_pct": 80,
+  "warn_disk_pct": 80,
+  "auto_provision": true,
+  "packages": {
+    "starter": "sola_starter",
+    "plus": "sola_plus",
+    "business": "sola_business",
+    "mini": "sola_mini"
+  },
+  "disk_gb": {
+    "starter": 5,
+    "plus": 10,
+    "business": 15,
+    "mini": 1
+  },
+  "package_limits": {
+    "max_parked": 0,
+    "max_addon": 5,
+    "max_sql": 10,
+    "max_pop": 15,
+    "max_ftp": 10,
+    "max_sub": 20,
+    "hasshell": false
+  },
+  "default_contact_email": "support@example.com",
+  "nameserver_1": "dns1.namecheaphosting.com",
+  "nameserver_2": "dns2.namecheaphosting.com",
+  "client_domain_suffix": "clients.example.com",
+  "cpanel_port": 2083,
+  "username_prefix": "sola"
+}

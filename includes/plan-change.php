@@ -19,6 +19,13 @@ function hs_plan_change_catalog(array $user, array $t, string $lang): array
         if ($pid === 'pro') {
             continue;
         }
+        // Hide free / domain-only pseudo-plans from upgrade UI (keep current if stuck on one).
+        if ($pid !== $current && function_exists('hs_plan_catalog_is_public') && !hs_plan_catalog_is_public($pid, $plan)) {
+            continue;
+        }
+        if ($pid !== $current && (($plan['type'] ?? '') === 'domain_only' || $pid === 'domain' || $pid === 'free')) {
+            continue;
+        }
         $siteLimit = (int) ($plan['sites'] ?? 1);
         $price = (float) ($plan['price_nok'] ?? 0);
         $isCurrent = $pid === $current;
@@ -62,6 +69,14 @@ function hs_plan_change_apply(array $user, string $newPlanId, string $lang = 'uk
     $newPlanId = trim($newPlanId);
 
     if ($userId === '' || $newPlanId === '' || !hs_plan_id_valid($newPlanId) || $newPlanId === 'pro') {
+        return ['ok' => false, 'error' => 'invalid_plan'];
+    }
+    if ($newPlanId === 'domain' || $newPlanId === 'free') {
+        return ['ok' => false, 'error' => 'invalid_plan'];
+    }
+    $newPlanCheck = hs_plan($newPlanId);
+    if (($newPlanCheck['type'] ?? '') === 'domain_only'
+        || (function_exists('hs_plan_catalog_is_public') && !hs_plan_catalog_is_public($newPlanId, $newPlanCheck))) {
         return ['ok' => false, 'error' => 'invalid_plan'];
     }
     if ($newPlanId === $current) {
